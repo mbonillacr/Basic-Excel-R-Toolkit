@@ -1,0 +1,43 @@
+{
+  "short_name": "BERT Console",
+  "name": "BERT v3.0 Web Console",
+  "description": "Execute R and Julia functions with BERT v3.0 cloud-native architecture",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "logo192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "logo512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#ffffff",
+  "categories": ["productivity", "developer", "utilities"],
+  "shortcuts": [
+    {
+      "name": "New R Function",
+      "short_name": "New R",
+      "description": "Create a new R function",
+      "url": "/new?lang=r",
+      "icons": [{ "src": "r-icon.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "New Julia Function", 
+      "short_name": "New Julia",
+      "description": "Create a new Julia function",
+      "url": "/new?lang=julia",
+      "icons": [{ "src": "julia-icon.png", "sizes": "96x96" }]
+    }
+  ]
+}

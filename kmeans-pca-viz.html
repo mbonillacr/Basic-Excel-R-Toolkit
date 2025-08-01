@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>BERT K-Means + PCA Visualization</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+            background: #0d1117;
+            color: #c9d1d9;
+            line-height: 1.5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 24px;
+        }
+        h1 {
+            color: #f0f6fc;
+            font-size: 24px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+        p {
+            text-align: center;
+            color: #8b949e;
+            margin-bottom: 24px;
+        }
+        .controls {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            justify-content: center;
+            margin: 24px 0;
+        }
+        label {
+            color: #f0f6fc;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        input {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: #c9d1d9;
+            padding: 8px 12px;
+            font-size: 14px;
+            width: 80px;
+        }
+        input:focus {
+            outline: none;
+            border-color: #58a6ff;
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
+        }
+        button {
+            background: #f85149;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #da3633;
+        }
+        .results {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-top: 24px;
+        }
+        .stats {
+            background: #21262d;
+            border: 1px solid #30363d;
+            padding: 16px;
+            border-radius: 6px;
+        }
+        .stats h3, .stats h4 {
+            color: #f0f6fc;
+            margin-bottom: 12px;
+            font-size: 16px;
+        }
+        .stats p {
+            text-align: left;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .plot-container {
+            height: 500px;
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+        }
+        .error {
+            background: #21262d;
+            border: 1px solid #f85149;
+            border-left: 3px solid #f85149;
+            color: #ffa198;
+            padding: 16px;
+            border-radius: 6px;
+            margin: 16px 0;
+        }
+        .error h3 {
+            color: #ffa198;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>BERT K-Means + PCA Visualization</h1>
+        <p>Clustering del dataset IRIS con visualización PCA</p>
+        
+        <div class="controls">
+            <label>K (clusters):</label>
+            <input type="number" id="k" value="3" min="1" max="10">
+            <button onclick="ejecutarAnalisis()">Run K-Means + PCA</button>
+        </div>
+        
+        <div id="error"></div>
+        
+        <div class="results">
+            <div class="stats" id="stats"></div>
+            <div class="plot-container" id="pcaPlot"></div>
+        </div>
+    </div>
+
+    <script>
+        const colores = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#34495e', '#e67e22', '#95a5a6', '#f1c40f'];
+        
+        async function ejecutarAnalisis() {
+            const k = parseInt(document.getElementById('k').value);
+            
+            if (isNaN(k) || k < 1 || k > 10) {
+                mostrarError('K debe ser un número entre 1 y 10');
+                return;
+            }
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/functions/kmeans', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ k })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Error en el servidor');
+                }
+                
+                const data = await response.json();
+                mostrarResultados(data.result);
+                crearGraficoPCA(data.result);
+                
+            } catch (error) {
+                mostrarError('Error: ' + error.message);
+            }
+        }
+        
+        function mostrarResultados(result) {
+            document.getElementById('stats').innerHTML = `
+                <h3>K-Means Statistics</h3>
+                <p><strong>K (clusters):</strong> ${result.k}</p>
+                <p><strong>Iterations:</strong> ${result.iter}</p>
+                <p><strong>Total Within SS:</strong> ${result.tot_withinss.toFixed(2)}</p>
+                <p><strong>Between SS:</strong> ${result.betweenss.toFixed(2)}</p>
+                <p><strong>Total SS:</strong> ${result.totss.toFixed(2)}</p>
+                
+                <h4>PCA Analysis</h4>
+                <p><strong>PC1 Variance:</strong> ${result.pca.variance_explained[0]}%</p>
+                <p><strong>PC2 Variance:</strong> ${result.pca.variance_explained[1]}%</p>
+                <p><strong>Total Variance:</strong> ${result.pca.cumulative_variance[1]}%</p>
+                
+                <h4>Centroids</h4>
+                ${result.centroids.map(c => `
+                    <div style="background: #30363d; padding: 8px; margin: 8px 0; border-radius: 6px; border-left: 3px solid ${colores[c.cluster-1]};">
+                        <strong style="color: ${colores[c.cluster-1]}">Cluster ${c.cluster}:</strong><br>
+                        <span style="font-size: 13px; color: #8b949e;">
+                        SL: ${c.sepal_length.toFixed(1)}, SW: ${c.sepal_width.toFixed(1)}<br>
+                        PL: ${c.petal_length.toFixed(1)}, PW: ${c.petal_width.toFixed(1)}
+                        </span>
+                    </div>
+                `).join('')}
+            `;
+        }
+        
+        function crearGraficoPCA(result) {
+            const traces = [];
+            
+            // Crear un trace por cada cluster
+            for (let i = 1; i <= result.k; i++) {
+                const clusterData = result.pca.data.filter(d => d.cluster === i);
+                
+                traces.push({
+                    x: clusterData.map(d => d.pc1),
+                    y: clusterData.map(d => d.pc2),
+                    mode: 'markers',
+                    type: 'scatter',
+                    name: `Cluster ${i}`,
+                    marker: {
+                        color: colores[i-1],
+                        size: 10,
+                        opacity: 0.8
+                    },
+                    text: clusterData.map(d => 
+                        `Cluster: ${d.cluster}<br>` +
+                        `PC1: ${d.pc1.toFixed(2)}<br>` +
+                        `PC2: ${d.pc2.toFixed(2)}<br>` +
+                        `SL: ${d.original.sepal_length}<br>` +
+                        `SW: ${d.original.sepal_width}<br>` +
+                        `PL: ${d.original.petal_length}<br>` +
+                        `PW: ${d.original.petal_width}`
+                    ),
+                    hovertemplate: '%{text}<extra></extra>'
+                });
+            }
+            
+            const layout = {
+                title: {
+                    text: `K-Means Clustering (K=${result.k}) - PCA Visualization`,
+                    font: { size: 16, color: '#f0f6fc' }
+                },
+                xaxis: {
+                    title: {
+                        text: `PC1 (${result.pca.variance_explained[0]}% variance)`,
+                        font: { color: '#c9d1d9' }
+                    },
+                    gridcolor: '#30363d',
+                    tickfont: { color: '#8b949e' },
+                    zerolinecolor: '#30363d'
+                },
+                yaxis: {
+                    title: {
+                        text: `PC2 (${result.pca.variance_explained[1]}% variance)`,
+                        font: { color: '#c9d1d9' }
+                    },
+                    gridcolor: '#30363d',
+                    tickfont: { color: '#8b949e' },
+                    zerolinecolor: '#30363d'
+                },
+                plot_bgcolor: '#21262d',
+                paper_bgcolor: '#21262d',
+                showlegend: true,
+                legend: {
+                    x: 1.02,
+                    y: 1,
+                    font: { color: '#c9d1d9' }
+                },
+                margin: { t: 50, r: 100, b: 50, l: 50 }
+            };
+            
+            const config = {
+                responsive: true,
+                displayModeBar: true,
+                modeBarButtonsToRemove: ['pan2d', 'lasso2d', 'select2d']
+            };
+            
+            Plotly.newPlot('pcaPlot', traces, layout, config);
+        }
+        
+        function mostrarError(mensaje) {
+            document.getElementById('error').innerHTML = `
+                <div class="error">
+                    <h3>Error</h3>
+                    <p>${mensaje}</p>
+                </div>
+            `;
+        }
+        
+        // Ejecutar automáticamente al cargar
+        window.onload = () => ejecutarAnalisis();
+    </script>
+</body>
+</html>

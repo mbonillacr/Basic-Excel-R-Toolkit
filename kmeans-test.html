@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>BERT K-Means Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; background: #f0f8ff; }
+        .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; text-align: center; }
+        .input-group { margin: 15px 0; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #34495e; }
+        input { width: 100%; padding: 12px; border: 2px solid #bdc3c7; border-radius: 5px; font-size: 16px; background: #060a0f; color: #c9d1d9; }
+        button { width: 100%; padding: 15px; background: #e74c3c; color: white; border: none; border-radius: 5px; font-size: 18px; cursor: pointer; margin-top: 20px; }
+        button:hover { background: #c0392b; }
+        .result { margin-top: 20px; padding: 15px; border-radius: 5px; }
+        .success { background: #d5f4e6; border: 1px solid #27ae60; }
+        .error { background: #fadbd8; border: 1px solid #e74c3c; color: #e74c3c; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; }
+        .cluster-info { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px; }
+        .cluster-box { background: #ecf0f1; padding: 15px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔬 BERT K-Means Clustering</h1>
+        <p style="text-align: center; color: #7f8c8d;">Análisis de clustering en dataset IRIS</p>
+        
+        <div class="input-group">
+            <label for="k">Número de clusters (K):</label>
+            <input type="number" id="k" placeholder="Ingresa K (1-10)" value="3" min="1" max="10">
+        </div>
+        
+        <button onclick="ejecutarKMeans()">🔬 Ejecutar K-Means</button>
+        
+        <div id="resultado"></div>
+    </div>
+
+    <script>
+        async function ejecutarKMeans() {
+            const k = parseInt(document.getElementById('k').value);
+            
+            if (isNaN(k) || k < 1 || k > 10) {
+                mostrarError('K debe ser un número entre 1 y 10');
+                return;
+            }
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/functions/kmeans', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ k })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Error en el servidor');
+                }
+                
+                const data = await response.json();
+                mostrarResultado(data);
+                
+            } catch (error) {
+                mostrarError('Error: ' + error.message);
+            }
+        }
+        
+        function mostrarResultado(data) {
+            const result = data.result;
+            
+            let centroidsHtml = '';
+            result.centroids.forEach(centroid => {
+                centroidsHtml += `
+                    <div class="cluster-box">
+                        <h4>Cluster ${centroid.cluster}</h4>
+                        <p><strong>Sepal Length:</strong> ${centroid.sepal_length.toFixed(2)}</p>
+                        <p><strong>Sepal Width:</strong> ${centroid.sepal_width.toFixed(2)}</p>
+                        <p><strong>Petal Length:</strong> ${centroid.petal_length.toFixed(2)}</p>
+                        <p><strong>Petal Width:</strong> ${centroid.petal_width.toFixed(2)}</p>
+                    </div>
+                `;
+            });
+            
+            document.getElementById('resultado').innerHTML = `
+                <div class="result success">
+                    <h3>✅ Resultados K-Means</h3>
+                    <p><strong>Función:</strong> ${data.function}</p>
+                    <p><strong>K (clusters):</strong> ${result.k}</p>
+                    <p><strong>Iteraciones:</strong> ${result.iter}</p>
+                    <p><strong>Total Within SS:</strong> ${result.tot_withinss.toFixed(2)}</p>
+                    <p><strong>Between SS:</strong> ${result.betweenss.toFixed(2)}</p>
+                    <p><strong>Total SS:</strong> ${result.totss.toFixed(2)}</p>
+                    
+                    <h4>📊 Centroides de Clusters</h4>
+                    <div class="cluster-info">
+                        ${centroidsHtml}
+                    </div>
+                    
+                    <h4>🔢 Asignaciones de Clusters</h4>
+                    <p><strong>Clusters:</strong> [${result.clusters.join(', ')}]</p>
+                    
+                    <h4>📈 Within Sum of Squares por Cluster</h4>
+                    <p><strong>Within SS:</strong> [${result.withinss.map(w => w.toFixed(2)).join(', ')}]</p>
+                    
+                    <p><strong>Tiempo:</strong> ${new Date(data.timestamp).toLocaleTimeString()}</p>
+                </div>
+            `;
+        }
+        
+        function mostrarError(mensaje) {
+            document.getElementById('resultado').innerHTML = `
+                <div class="result error">
+                    <h3>❌ Error</h3>
+                    <p>${mensaje}</p>
+                </div>
+            `;
+        }
+        
+        // Permitir ejecutar con Enter
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                ejecutarKMeans();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1" 
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+           xsi:type="TaskPaneApp">
+  <Id>12345678-1234-1234-1234-123456789012</Id>
+  <Version>3.0.0</Version>
+  <ProviderName>BERT Team</ProviderName>
+  <DefaultLocale>en-US</DefaultLocale>
+  <DisplayName DefaultValue="BERT v3.0"/>
+  <Description DefaultValue="Basic Excel R Toolkit - Cloud Native Edition"/>
+  <IconUrl DefaultValue="http://localhost:3000/icon.png"/>
+  <HighResolutionIconUrl DefaultValue="http://localhost:3000/icon-high.png"/>
+  <SupportUrl DefaultValue="https://bert-toolkit.com"/>
+  <AppDomains>
+    <AppDomain>localhost:3000</AppDomain>
+  </AppDomains>
+  <Hosts>
+    <Host Name="Workbook"/>
+  </Hosts>
+  <DefaultSettings>
+    <SourceLocation DefaultValue="http://localhost:3000/console"/>
+  </DefaultSettings>
+  <Permissions>ReadWriteDocument</Permissions>
+</OfficeApp>

@@ -6,3 +6,4 @@ BERTModule_*.gz
 notes.md
 
 yarn-error.log
+node_modules

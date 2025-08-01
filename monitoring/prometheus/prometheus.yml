@@ -1,0 +1,77 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "rules/*.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # System metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # BERT Services
+  - job_name: 'bert-api-gateway'
+    static_configs:
+      - targets: ['api-gateway:3000']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  - job_name: 'bert-r-service'
+    static_configs:
+      - targets: ['r-service:3001']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  - job_name: 'bert-julia-service'
+    static_configs:
+      - targets: ['julia-service:3002']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  - job_name: 'bert-auth-service'
+    static_configs:
+      - targets: ['auth-service:3003']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  - job_name: 'bert-ai-service'
+    static_configs:
+      - targets: ['ai-service:3004']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  - job_name: 'bert-plugin-manager'
+    static_configs:
+      - targets: ['plugin-manager:3005']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  - job_name: 'bert-python-service'
+    static_configs:
+      - targets: ['python-service:3006']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Database monitoring
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+    metrics_path: '/metrics'
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    metrics_path: '/metrics'

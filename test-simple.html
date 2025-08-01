@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>BERT Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+        button { padding: 10px 20px; background: #007cba; color: white; border: none; border-radius: 4px; cursor: pointer; margin: 10px; }
+        .result { margin-top: 20px; padding: 15px; background: #e8f5e9; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>🚀 BERT Test Simple</h1>
+    
+    <button onclick="testHealth()">Test Health</button>
+    <button onclick="testSum()">Test Sum (5+3)</button>
+    
+    <div id="result"></div>
+
+    <script>
+        async function testHealth() {
+            try {
+                const response = await fetch('http://localhost:3000/health');
+                const data = await response.json();
+                document.getElementById('result').innerHTML = `
+                    <div class="result">
+                        <h3>✅ Health Check</h3>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById('result').innerHTML = `
+                    <div class="result" style="background: #ffebee;">
+                        <h3>❌ Error</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function testSum() {
+            try {
+                const response = await fetch('http://localhost:3000/api/functions/sum', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ a: 5, b: 3 })
+                });
+                const data = await response.json();
+                document.getElementById('result').innerHTML = `
+                    <div class="result">
+                        <h3>✅ BERT.Sum Result</h3>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById('result').innerHTML = `
+                    <div class="result" style="background: #ffebee;">
+                        <h3>❌ Error</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

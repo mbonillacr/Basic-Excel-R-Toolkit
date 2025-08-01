@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BERT Linear Regression Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+            background: #0d1117;
+            color: #c9d1d9;
+            line-height: 1.5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 24px;
+        }
+        h1 {
+            color: #f0f6fc;
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+        .input-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        label {
+            color: #f0f6fc;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        input, select {
+            background: #060a0f;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: #c9d1d9;
+            padding: 8px 12px;
+            font-size: 14px;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #58a6ff;
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
+        }
+        table {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            width: 100%;
+        }
+        th, td {
+            border: 1px solid #30363d;
+            padding: 8px;
+            text-align: center;
+            color: #c9d1d9;
+        }
+        th {
+            background: #30363d;
+            font-weight: 600;
+        }
+        td[contenteditable]:focus {
+            outline: 2px solid #58a6ff;
+            background: #060a0f;
+        }
+        td[contenteditable] {
+            background: #060a0f;
+        }
+        .options-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin: 16px 0;
+            padding: 16px;
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+        }
+        button {
+            background: #f85149;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            margin: 4px;
+        }
+        button:hover {
+            background: #da3633;
+        }
+        button[type="button"] {
+            background: #21262d;
+            border: 1px solid #30363d;
+            color: #c9d1d9;
+            padding: 4px 8px;
+            font-size: 12px;
+        }
+        button[type="button"]:hover {
+            background: #30363d;
+        }
+        #result {
+            margin-top: 16px;
+            padding: 16px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            font-family: 'SF Mono', monospace;
+            font-size: 13px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .error {
+            background: #21262d;
+            border-left: 3px solid #f85149;
+            color: #ffa198;
+        }
+        .success {
+            background: #21262d;
+            border-left: 3px solid #3fb950;
+            color: #56d364;
+        }
+        .help-text {
+            font-size: 12px;
+            color: #8b949e;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>BERT Linear Regression</h1>
+        
+        <div class="input-section">
+            <div class="input-group">
+                <label>Variable Dependiente (Y):</label>
+                <div style="border: 1px solid #ddd; border-radius: 5px; overflow: hidden;">
+                    <table id="dataYTable" style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background-color: #f8f9fa;">
+                                <th style="padding: 8px; border: 1px solid #ddd; text-align: center;">Y</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dataYBody">
+                            <tr><td contenteditable="true" style="padding: 8px; border: 1px solid #ddd; text-align: center;">7</td></tr>
+                            <tr><td contenteditable="true" style="padding: 8px; border: 1px solid #ddd; text-align: center;">12</td></tr>
+                            <tr><td contenteditable="true" style="padding: 8px; border: 1px solid #ddd; text-align: center;">17</td></tr>
+                            <tr><td contenteditable="true" style="padding: 8px; border: 1px solid #ddd; text-align: center;">22</td></tr>
+                            <tr><td contenteditable="true" style="padding: 8px; border: 1px solid #ddd; text-align: center;">27</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="help-text">Copie y pegue datos desde Excel. Use N y P para ajustar dimensiones.</div>
+            </div>
+            
+            <div class="input-group">
+                <label>Variables Independientes (X):</label>
+                <div style="border: 1px solid #ddd; border-radius: 5px; overflow: hidden;">
+                    <table id="dataXTable" style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background-color: #f8f9fa;">
+                                <th style="padding: 8px; border: 1px solid #ddd; text-align: center;">X1</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dataXBody">
+                            <tr><td contenteditable="true" style="padding: 8px; border: 1px solid #ddd; text-align: center;">1</td></tr>
+                            <tr><td contenteditable="true" style="padding: 8px; border: 1px solid #ddd; text-align: center;">2</td></tr>
+                            <tr><td contenteditable="true" style="padding: 8px; border: 1px solid #ddd; text-align: center;">3</td></tr>
+                            <tr><td contenteditable="true" style="padding: 8px; border: 1px solid #ddd; text-align: center;">4</td></tr>
+                            <tr><td contenteditable="true" style="padding: 8px; border: 1px solid #ddd; text-align: center;">5</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="help-text">Copie y pegue datos desde Excel. Use N y P para ajustar dimensiones.</div>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label>Datos para Predicción (opcional):</label>
+            <div style="border: 1px solid #ddd; border-radius: 5px; overflow: hidden;">
+                <table id="predictTable" style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background-color: #f8f9fa;">
+                            <th style="padding: 8px; border: 1px solid #ddd; text-align: center;">X1</th>
+                        </tr>
+                    </thead>
+                    <tbody id="predictBody">
+                        <tr><td contenteditable="true" style="padding: 8px; border: 1px solid #ddd; text-align: center;">6</td></tr>
+                        <tr><td contenteditable="true" style="padding: 8px; border: 1px solid #ddd; text-align: center;">7</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="help-text">Solo para outputType = 3. Se ajusta automáticamente con P.</div>
+        </div>
+
+        <div class="options-section">
+            <div class="input-group">
+                <label for="nRows">Observaciones (N):</label>
+                <input type="number" id="nRows" value="5" min="2" max="100" onchange="updateTables()">
+            </div>
+            
+            <div class="input-group">
+                <label for="pCols">Variables X (P):</label>
+                <input type="number" id="pCols" value="1" min="1" max="10" onchange="updateTables()">
+            </div>
+            
+            <div class="input-group">
+                <label for="outputType">Tipo de Salida:</label>
+                <select id="outputType">
+                    <option value="1">1 - Modelo Estimado (Stargazer)</option>
+                    <option value="2">2 - Predicción Dentro de Muestra</option>
+                    <option value="3">3 - Predicción Fuera de Muestra</option>
+                    <option value="4">4 - Efectos Marginales</option>
+                    <option value="5">5 - Inflación de Varianza (VIF)</option>
+                    <option value="6">6 - Test Heterocedasticidad</option>
+                    <option value="7">7 - Errores Estándar Robustos</option>
+                    <option value="8">8 - Observaciones de Influencia</option>
+                    <option value="9">9 - Información de Ejecución</option>
+                    <option value="10">10 - Crear Dataset</option>
+                    <option value="11">11 - Summary del Modelo</option>
+                    <option value="12">12 - Residuos</option>
+                </select>
+            </div>
+            
+            <div class="input-group">
+                <label for="constant">Constante:</label>
+                <select id="constant">
+                    <option value="1">1 - Incluir intercepto</option>
+                    <option value="0">0 - Sin intercepto</option>
+                </select>
+            </div>
+            
+            <div class="input-group">
+                <label for="categorical">Categórica:</label>
+                <select id="categorical">
+                    <option value="0">0 - No</option>
+                    <option value="1">1 - Sí</option>
+                </select>
+            </div>
+            
+            <div class="input-group">
+                <label for="scale">Escala:</label>
+                <select id="scale">
+                    <option value="0">0 - No</option>
+                    <option value="1">1 - Sí</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin: 24px 0;">
+            <button onclick="loadExample()">Load Example</button>
+            <button onclick="runRegression()">Run Regression</button>
+            <button onclick="clearAll()">Clear All</button>
+        </div>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        // Update tables based on N and P parameters
+        function updateTables() {
+            const n = parseInt(document.getElementById('nRows').value);
+            const p = parseInt(document.getElementById('pCols').value);
+            
+            // Update Y table
+            const yTbody = document.getElementById('dataYBody');
+            yTbody.innerHTML = '';
+            const yExampleData = [7, 12, 17, 22, 27];
+            for (let i = 0; i < n; i++) {
+                const row = yTbody.insertRow();
+                const cell = row.insertCell();
+                cell.contentEditable = true;
+                cell.style.cssText = 'padding: 8px; border: 1px solid #ddd; text-align: center;';
+                cell.textContent = i < yExampleData.length ? yExampleData[i] : '';
+            }
+            
+            // Update X table
+            const xTable = document.getElementById('dataXTable');
+            const xThead = xTable.querySelector('thead tr');
+            const xTbody = document.getElementById('dataXBody');
+            
+            // Update X header
+            xThead.innerHTML = '';
+            for (let j = 1; j <= p; j++) {
+                const th = document.createElement('th');
+                th.style.cssText = 'padding: 8px; border: 1px solid #ddd; text-align: center;';
+                th.textContent = `X${j}`;
+                xThead.appendChild(th);
+            }
+            
+            // Update X body
+            xTbody.innerHTML = '';
+            const xExampleData = [1, 2, 3, 4, 5];
+            for (let i = 0; i < n; i++) {
+                const row = xTbody.insertRow();
+                for (let j = 0; j < p; j++) {
+                    const cell = row.insertCell();
+                    cell.contentEditable = true;
+                    cell.style.cssText = 'padding: 8px; border: 1px solid #ddd; text-align: center;';
+                    if (j === 0 && i < xExampleData.length) {
+                        cell.textContent = xExampleData[i];
+                    } else {
+                        cell.textContent = '';
+                    }
+                }
+            }
+            
+            // Update predict table
+            const predictTable = document.getElementById('predictTable');
+            const predictThead = predictTable.querySelector('thead tr');
+            const predictTbody = document.getElementById('predictBody');
+            
+            // Update predict header
+            predictThead.innerHTML = '';
+            for (let j = 1; j <= p; j++) {
+                const th = document.createElement('th');
+                th.style.cssText = 'padding: 8px; border: 1px solid #ddd; text-align: center;';
+                th.textContent = `X${j}`;
+                predictThead.appendChild(th);
+            }
+            
+            // Update predict body (2 rows by default)
+            predictTbody.innerHTML = '';
+            const predictExampleData = [6, 7];
+            for (let i = 0; i < 2; i++) {
+                const row = predictTbody.insertRow();
+                for (let j = 0; j < p; j++) {
+                    const cell = row.insertCell();
+                    cell.contentEditable = true;
+                    cell.style.cssText = 'padding: 8px; border: 1px solid #ddd; text-align: center;';
+                    if (j === 0 && i < predictExampleData.length) {
+                        cell.textContent = predictExampleData[i];
+                    } else {
+                        cell.textContent = '';
+                    }
+                }
+            }
+        }
+        
+        function getTableData(tableId) {
+            const tbody = document.querySelector(`#${tableId} tbody`);
+            const data = [];
+            for (let row of tbody.rows) {
+                const rowData = [];
+                for (let cell of row.cells) {
+                    const value = cell.textContent.trim();
+                    if (value !== '') rowData.push(parseFloat(value) || 0);
+                }
+                if (rowData.length > 0) data.push(rowData);
+            }
+            return data;
+        }
+        
+        function loadExample() {
+            document.getElementById('nRows').value = '5';
+            document.getElementById('pCols').value = '1';
+            document.getElementById('outputType').value = '1';
+            document.getElementById('constant').value = '1';
+            updateTables();
+        }
+        
+        function clearAll() {
+            document.getElementById('nRows').value = '5';
+            document.getElementById('pCols').value = '1';
+            document.getElementById('outputType').value = '1';
+            document.getElementById('constant').value = '1';
+            document.getElementById('result').innerHTML = '';
+            
+            // Clear all table data
+            const yBody = document.getElementById('dataYBody');
+            for (let cell of yBody.querySelectorAll('td')) {
+                cell.textContent = '';
+            }
+            
+            const xBody = document.getElementById('dataXBody');
+            for (let cell of xBody.querySelectorAll('td')) {
+                cell.textContent = '';
+            }
+            
+            const predictBody = document.getElementById('predictBody');
+            for (let cell of predictBody.querySelectorAll('td')) {
+                cell.textContent = '';
+            }
+        }
+
+        async function runRegression() {
+            // Get data from tables
+            const yData = getTableData('dataYTable');
+            const xData = getTableData('dataXTable');
+            const predictData = getTableData('predictTable');
+            
+            const outputType = parseInt(document.getElementById('outputType').value);
+            const constant = parseInt(document.getElementById('constant').value);
+            const categorical = parseInt(document.getElementById('categorical').value);
+            const scale = parseInt(document.getElementById('scale').value);
+
+            if (yData.length === 0 || xData.length === 0) {
+                showResult('Error: Debe proporcionar datos Y y X', 'error');
+                return;
+            }
+            
+            if (yData.length !== xData.length) {
+                showResult('Error: Y y X deben tener el mismo número de observaciones', 'error');
+                return;
+            }
+
+            // Convert table data to API format
+            const dataY = yData.map(row => row[0]); // Y is single column
+            const dataX = xData; // X can be multiple columns
+
+            const options = {
+                outputType,
+                constant,
+                categorical,
+                scale
+            };
+
+            if (predictData.length > 0 && outputType === 3) {
+                options.predictData = predictData;
+            }
+
+            try {
+                showResult('Ejecutando regresión lineal...', 'info');
+
+                const response = await fetch('http://localhost:3000/api/functions/linear-regression', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        dataY,
+                        dataX,
+                        options
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResult(JSON.stringify(data, null, 2), 'success');
+                } else {
+                    showResult(`Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showResult(`Error de conexión: ${error.message}`, 'error');
+            }
+        }
+
+        function showResult(message, type) {
+            const resultDiv = document.getElementById('result');
+            
+            if (type === 'success' && typeof message === 'string') {
+                try {
+                    const data = JSON.parse(message);
+                    if (data.result && data.result.R4XCL_ModeloEstimado) {
+                        const stargazerText = Array.isArray(data.result.R4XCL_ModeloEstimado) 
+                            ? data.result.R4XCL_ModeloEstimado.join('\n')
+                            : data.result.R4XCL_ModeloEstimado;
+                        resultDiv.innerHTML = `<pre style="font-family: 'Courier New', monospace; background: #0d1117; padding: 15px; border-radius: 6px; white-space: pre; font-size: 12px; line-height: 1.2; color: #c9d1d9; overflow-x: auto;">${stargazerText}</pre>`;
+                    } else {
+                        resultDiv.innerHTML = formatScientificOutput(data);
+                    }
+                } catch {
+                    resultDiv.innerHTML = `<pre style="font-family: 'Courier New', monospace; background: #0d1117; padding: 15px; border-radius: 6px; white-space: pre; font-size: 12px; line-height: 1.2; color: #c9d1d9;">${message}</pre>`;
+                }
+            } else {
+                resultDiv.innerHTML = `<pre style="font-family: 'Courier New', monospace; background: #0d1117; padding: 15px; border-radius: 6px; white-space: pre; font-size: 12px; line-height: 1.2; color: #c9d1d9;">${message}</pre>`;
+            }
+            
+            resultDiv.className = type;
+        }
+        
+        function formatScientificOutput(data) {
+            if (!data.result) return `<pre style="font-family: 'Courier New', monospace; background: #0d1117; padding: 15px; border-radius: 6px; white-space: pre; font-size: 12px; line-height: 1.2; color: #c9d1d9;">${JSON.stringify(data, null, 2)}</pre>`;
+            
+            const result = data.result;
+            
+            // For Stargazer output - show only the text
+            if (result.R4XCL_ModeloEstimado) {
+                let stargazerText = '';
+                if (Array.isArray(result.R4XCL_ModeloEstimado)) {
+                    stargazerText = result.R4XCL_ModeloEstimado.join('\n');
+                } else {
+                    stargazerText = result.R4XCL_ModeloEstimado;
+                }
+                
+                return `<pre style="font-family: 'Courier New', monospace; background: #0d1117; padding: 15px; border-radius: 6px; white-space: pre; font-size: 12px; line-height: 1.2; color: #c9d1d9; overflow-x: auto;">${stargazerText}</pre>`;
+            }
+            
+            // For other outputs, use formatted display
+            let output = `<div style="font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.4; color: #c9d1d9;">`;
+            
+            // Header
+            output += `<div style="text-align: center; margin-bottom: 20px;">`;
+            output += `<strong>BERT Linear Regression Results</strong><br>`;
+            output += `Function: ${data.function}<br>`;
+            output += `Timestamp: ${new Date(data.timestamp).toLocaleString()}<br>`;
+            output += `</div>`;
+            
+            if (result.R4XCL_EfectosMarginales) {
+                output += `<div style="margin-top: 20px;">`;
+                output += `<strong>Marginal Effects</strong><br><br>`;
+                output += `<pre style="font-family: 'Courier New', monospace; background: #0d1117; padding: 15px; border-radius: 6px; white-space: pre; font-size: 12px; line-height: 1.2;">`;
+                output += `Variable               Marginal Effect\n`;
+                output += `${'='.repeat(40)}\n`;
+                
+                if (Array.isArray(result.R4XCL_EfectosMarginales)) {
+                    result.R4XCL_EfectosMarginales.forEach(effect => {
+                        const variable = effect.variable || 'Unknown';
+                        const value = typeof effect.marginalEffect === 'number' ? 
+                            effect.marginalEffect.toFixed(6) : effect.marginalEffect;
+                        output += `${variable.padEnd(20)} ${value}\n`;
+                    });
+                } else {
+                    output += JSON.stringify(result.R4XCL_EfectosMarginales, null, 2);
+                }
+                output += `</pre></div>`;
+            }
+            
+            if (result.R4XCL_PrediccionDentroDeMuestra || result.R4XCL_PrediccionFueraDeMuestra) {
+                const predictions = result.R4XCL_PrediccionDentroDeMuestra || result.R4XCL_PrediccionFueraDeMuestra;
+                const title = result.R4XCL_PrediccionDentroDeMuestra ? 'In-Sample Predictions' : 'Out-of-Sample Predictions';
+                
+                output += `<div style="margin-top: 20px;">`;
+                output += `<strong>${title}</strong><br><br>`;
+                output += `<pre style="font-family: 'Courier New', monospace; background: #0d1117; padding: 15px; border-radius: 6px; white-space: pre; font-size: 12px; line-height: 1.2;">`;
+                output += `Obs.    Predicted Value\n`;
+                output += `${'='.repeat(25)}\n`;
+                
+                if (Array.isArray(predictions)) {
+                    predictions.forEach((pred, i) => {
+                        const value = typeof pred === 'number' ? pred.toFixed(6) : pred;
+                        output += `${(i+1).toString().padStart(4)}    ${value}\n`;
+                    });
+                } else {
+                    output += JSON.stringify(predictions, null, 2);
+                }
+                output += `</pre></div>`;
+            }
+            
+            if (result.R4XCL_Residuos) {
+                output += `<div style="margin-top: 20px;">`;
+                output += `<strong>Residuals</strong><br><br>`;
+                output += `<pre style="font-family: 'Courier New', monospace; background: #0d1117; padding: 15px; border-radius: 6px; white-space: pre; font-size: 12px; line-height: 1.2;">`;
+                output += `Obs.    Residual\n`;
+                output += `${'='.repeat(20)}\n`;
+                
+                if (Array.isArray(result.R4XCL_Residuos)) {
+                    result.R4XCL_Residuos.forEach((resid, i) => {
+                        const value = typeof resid === 'number' ? resid.toFixed(6) : resid;
+                        output += `${(i+1).toString().padStart(4)}    ${value}\n`;
+                    });
+                } else {
+                    output += JSON.stringify(result.R4XCL_Residuos, null, 2);
+                }
+                output += `</pre></div>`;
+            }
+            
+            // Handle other result types
+            Object.keys(result).forEach(key => {
+                if (!['R4XCL_ModeloEstimado', 'R4XCL_EfectosMarginales', 'R4XCL_PrediccionDentroDeMuestra', 
+                      'R4XCL_PrediccionFueraDeMuestra', 'R4XCL_Residuos'].includes(key)) {
+                    output += `<div style="margin-top: 20px;">`;
+                    output += `<strong>${key.replace('R4XCL_', '').replace(/([A-Z])/g, ' $1').trim()}</strong><br><br>`;
+                    output += `<pre style="font-family: 'Courier New', monospace; background: #0d1117; padding: 15px; border-radius: 6px; white-space: pre; font-size: 12px; line-height: 1.2;">`;
+                    
+                    if (Array.isArray(result[key])) {
+                        output += result[key].join('\n');
+                    } else if (typeof result[key] === 'string') {
+                        output += result[key];
+                    } else {
+                        output += JSON.stringify(result[key], null, 2);
+                    }
+                    output += `</pre></div>`;
+                }
+            });
+            
+            output += `</div>`;
+            return output;
+        }
+
+        // Cargar ejemplo al inicio
+        window.onload = function() {
+            updateTables();
+            loadExample();
+        };
+    </script>
+</body>
+</html>

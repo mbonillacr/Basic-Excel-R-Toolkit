@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  api-gateway:
+    build: ./services/api-gateway
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+
+  auth-service:
+    build: ./services/auth-service
+    ports:
+      - "3003:3003"
+    environment:
+      - NODE_ENV=production
+      - JWT_SECRET=bert-super-secret-key-2024
+
+  ai-service:
+    build: ./services/ai-service
+    ports:
+      - "3004:3004"
+    environment:
+      - NODE_ENV=production
+
+  plugin-manager:
+    build: ./services/plugin-manager
+    ports:
+      - "3005:3005"
+    environment:
+      - NODE_ENV=production
