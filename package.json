@@ -1,56 +1,16 @@
 {
-  "name": "bert-v3",
+  "name": "bert-unified-server",
   "version": "3.0.0",
-  "description": "BERT v3.0 - Basic Excel R Toolkit with Cloud-Native Architecture",
-  "main": "index.js",
   "scripts": {
-    "start": "docker-compose up -d",
-    "stop": "docker-compose down",
-    "restart": "docker-compose restart",
-    "logs": "docker-compose logs -f",
-    "install-services": "npm run install:api-gateway && npm run install:r-service && npm run install:julia-service && npm run install:auth-service && npm run install:ai-service && npm run install:plugin-manager && npm run install:python-service",
-    "install:api-gateway": "cd services/api-gateway && npm install",
-    "install:r-service": "cd services/r-service && npm install",
-    "install:julia-service": "cd services/julia-service && npm install",
-    "install:auth-service": "cd services/auth-service && npm install",
-    "install:ai-service": "cd services/ai-service && npm install",
-    "install:plugin-manager": "cd services/plugin-manager && npm install",
-    "install:python-service": "cd services/python-service && npm install",
-    "migrate": "node tools/migration/migrate.js migrate",
-    "deploy": "bash deployment/deploy.sh production blue-green",
-    "monitoring": "docker-compose -f monitoring/docker-compose.monitoring.yml up -d",
-    "test": "npm run test:unit && npm run test:integration",
-    "test:unit": "jest tests/unit",
-    "test:integration": "jest tests/integration",
-    "test:e2e": "jest tests/e2e"
+    "start": "node bert-unified-server.js",
+    "dev": "node bert-unified-server.js",
+    "bert": "node bert-unified-server.js"
   },
-  "keywords": [
-    "excel",
-    "r",
-    "julia",
-    "python",
-    "data-analysis",
-    "microservices"
-  ],
-  "author": "BERT Team",
-  "license": "GPL-3.0",
-  "devDependencies": {
-    "jest": "^29.7.0",
-    "supertest": "^6.3.3"
-  },
-  "directories": {
-    "doc": "docs",
-    "test": "tests"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/sdllc/Basic-Excel-R-Toolkit.git"
-  },
-  "bugs": {
-    "url": "https://github.com/sdllc/Basic-Excel-R-Toolkit/issues"
-  },
-  "homepage": "https://github.com/sdllc/Basic-Excel-R-Toolkit#readme",
   "dependencies": {
-    "express": "^5.1.0"
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "multer": "^1.4.5-lts.1",
+    "uuid": "^11.1.0",
+    "xlsx": "^0.18.5"
   }
 }

@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BERT Series de Tiempo</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+            background: #0d1117;
+            color: #c9d1d9;
+            line-height: 1.5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 24px;
+        }
+        h1 {
+            color: #f0f6fc;
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+        .upload-section {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .data-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        label {
+            color: #f0f6fc;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        input, select, textarea {
+            background: #060a0f;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: #c9d1d9;
+            padding: 8px 12px;
+            font-size: 14px;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #58a6ff;
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
+        }
+        textarea {
+            min-height: 120px;
+            font-family: 'SF Mono', monospace;
+            resize: vertical;
+        }
+        .options-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin: 16px 0;
+            padding: 16px;
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+        }
+        button {
+            background: #f85149;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            margin: 4px;
+        }
+        button:hover {
+            background: #da3633;
+        }
+        button.secondary {
+            background: #21262d;
+            border: 1px solid #30363d;
+            color: #c9d1d9;
+        }
+        button.secondary:hover {
+            background: #30363d;
+        }
+        #result {
+            margin-top: 16px;
+            padding: 16px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            font-family: 'SF Mono', monospace;
+            font-size: 13px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .chart-container {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .help-text {
+            font-size: 12px;
+            color: #8b949e;
+            margin-top: 4px;
+        }
+        .error {
+            background: #21262d;
+            border-left: 3px solid #f85149;
+            color: #ffa198;
+        }
+        .success {
+            background: #21262d;
+            border-left: 3px solid #3fb950;
+            color: #56d364;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔬 BERT Series de Tiempo</h1>
+        
+        <div class="upload-section">
+            <h3 style="color: #f0f6fc; margin-bottom: 12px;">📁 Cargar Archivo de Datos</h3>
+            <div class="input-group">
+                <label for="fileInput">Seleccionar Archivo:</label>
+                <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.txt" onchange="fileSelected(event)">
+                <div class="help-text">Formatos soportados: Excel (.xlsx, .xls), CSV (.csv), Texto (.txt)</div>
+                <div style="margin-top: 15px; text-align: center;">
+                    <button id="loadButton" onclick="loadDataFile()" style="display: none;">Cargar Datos</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="previewSection" class="data-section" style="display: none;">
+            <div class="input-group">
+                <h4 style="color: #f0f6fc; margin-bottom: 12px;">🔍 Vista Previa de Datos</h4>
+                <div id="dataPreview" style="background: #21262d; padding: 15px; border-radius: 6px; font-family: monospace;"></div>
+                <div style="margin-top: 15px; text-align: center;">
+                    <button onclick="acceptData()" style="background: #3fb950;">Aceptar y Continuar</button>
+                    <button onclick="cancelLoad()" class="secondary">Cancelar</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="chartSection" class="chart-container" style="display: none;">
+            <h4 style="color: #f0f6fc; margin-bottom: 12px;">📊 Visualización de Datos</h4>
+            <div id="dataChart" style="height: 300px;"></div>
+        </div>
+
+        <div class="options-section">
+            <div class="input-group">
+                <label for="periodicidad">Periodicidad:</label>
+                <select id="periodicidad">
+                    <option value="1">1 - Anual</option>
+                    <option value="2">2 - Semestral</option>
+                    <option value="3">3 - Trimestral</option>
+                    <option value="4" selected>4 - Mensual</option>
+                </select>
+            </div>
+            
+            <div class="input-group">
+                <label for="tipoOutput">Tipo de Análisis:</label>
+                <select id="tipoOutput">
+                    <option value="0">0 - Lista de funciones</option>
+                    <option value="1">1 - Cointegración</option>
+                    <option value="2" selected>2 - Raíz Unitaria (ADF)</option>
+                    <option value="3">3 - Phillips-Perron</option>
+                    <option value="4">4 - Jarque-Bera</option>
+                    <option value="5">5 - Autocorrelación</option>
+                    <option value="6">6 - Descomposición Aditiva</option>
+                    <option value="7">7 - Descomposición Multiplicativa</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin: 24px 0;">
+            <button onclick="runAnalysis()">Ejecutar Análisis</button>
+            <button onclick="clearAll()" class="secondary">Limpiar Todo</button>
+        </div>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        let loadedData = [];
+        let selectedFile = null;
+        let sessionId = null;
+        
+        // Archivo seleccionado
+        function fileSelected(event) {
+            selectedFile = event.target.files[0];
+            const loadButton = document.getElementById('loadButton');
+            
+            if (selectedFile) {
+                loadButton.style.display = 'inline-block';
+                showResult(`Archivo seleccionado: ${selectedFile.name}. Haga clic en "Cargar Datos" para continuar.`, 'info');
+            } else {
+                loadButton.style.display = 'none';
+            }
+        }
+        
+        // Cargar archivo de datos
+        async function loadDataFile() {
+            if (!selectedFile) {
+                showResult('❌ Error: No hay archivo seleccionado', 'error');
+                return;
+            }
+
+            try {
+                showResult('Cargando archivo...', 'info');
+                
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+                
+                const response = await fetch('/api/upload-timeseries', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success && result.preview.length > 0) {
+                    loadedData = result.preview;
+                    sessionId = result.sessionId;
+                    document.getElementById('loadButton').style.display = 'none';
+                    showPreview(result);
+                } else {
+                    showResult(`❌ Error: ${result.error || 'No se encontraron datos numéricos'}`, 'error');
+                }
+                
+            } catch (error) {
+                showResult(`❌ Error al cargar archivo: ${error.message}`, 'error');
+            }
+        }
+
+        // Mostrar vista previa
+        function showPreview(result) {
+            const previewDiv = document.getElementById('dataPreview');
+            const previewSection = document.getElementById('previewSection');
+            
+            let previewText = `Archivo: ${result.fileType.toUpperCase()}\n`;
+            previewText += `Total de registros: ${result.total}\n\n`;
+            previewText += `Primeros 10 registros:\n`;
+            previewText += result.preview.map((val, i) => `${i+1}: ${val}`).join('\n');
+            
+            if (result.total > 10) {
+                previewText += `\n... y ${result.total - 10} registros más`;
+            }
+            
+            previewDiv.textContent = previewText;
+            previewSection.style.display = 'block';
+            document.getElementById('chartSection').style.display = 'none';
+        }
+        
+        // Aceptar datos y visualizar
+        function acceptData() {
+            if (loadedData.length === 0) return;
+            
+            document.getElementById('previewSection').style.display = 'none';
+            document.getElementById('chartSection').style.display = 'block';
+            visualizeData();
+            showResult(`✅ Datos cargados: ${loadedData.length} observaciones`, 'success');
+        }
+        
+        // Cancelar carga
+        function cancelLoad() {
+            loadedData = [];
+            selectedFile = null;
+            sessionId = null;
+            document.getElementById('previewSection').style.display = 'none';
+            document.getElementById('chartSection').style.display = 'none';
+            document.getElementById('fileInput').value = '';
+            document.getElementById('loadButton').style.display = 'none';
+            showResult('Carga cancelada', 'info');
+        }
+        
+        // Visualizar datos con Plotly
+        function visualizeData() {
+            if (loadedData.length === 0) {
+                document.getElementById('dataChart').innerHTML = '<div style="text-align: center; color: #8b949e; padding: 50px;">No hay datos para visualizar</div>';
+                return;
+            }
+
+            // Crear gráfico con Plotly
+            const trace = {
+                x: loadedData.map((_, i) => i + 1),
+                y: loadedData,
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'Serie de Tiempo',
+                line: {
+                    color: '#58a6ff',
+                    width: 2
+                },
+                marker: {
+                    color: '#f85149',
+                    size: 6
+                }
+            };
+
+            const layout = {
+                title: {
+                    text: 'Serie de Tiempo',
+                    font: { color: '#f0f6fc' }
+                },
+                xaxis: {
+                    title: 'Período',
+                    color: '#c9d1d9',
+                    gridcolor: '#30363d'
+                },
+                yaxis: {
+                    title: 'Valor',
+                    color: '#c9d1d9',
+                    gridcolor: '#30363d'
+                },
+                plot_bgcolor: '#0d1117',
+                paper_bgcolor: '#161b22',
+                font: { color: '#c9d1d9' }
+            };
+
+            const config = {
+                displayModeBar: true,
+                displaylogo: false,
+                modeBarButtonsToRemove: ['pan2d', 'lasso2d', 'select2d']
+            };
+
+            Plotly.newPlot('dataChart', [trace], layout, config);
+        }
+
+
+
+        // Ejecutar análisis de series de tiempo
+        async function runAnalysis() {
+            const periodicidad = parseInt(document.getElementById('periodicidad').value);
+            const tipoOutput = parseInt(document.getElementById('tipoOutput').value);
+
+            if (loadedData.length === 0 || !sessionId) {
+                showResult('❌ Error: Debe cargar un archivo de serie temporal primero', 'error');
+                return;
+            }
+
+            if (loadedData.length < 3) {
+                showResult('❌ Error: Se requieren al menos 3 observaciones', 'error');
+                return;
+            }
+
+            try {
+                showResult('Ejecutando análisis de series de tiempo...', 'info');
+
+                // Llamar al servidor R real
+                const response = await fetch('/api/timeseries-analysis', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        dataSource: 'user', 
+                        sessionId: sessionId, 
+                        periodicidad: periodicidad, 
+                        tipoAnalisis: 'ST_SeriesTemporales',
+                        tipoOutput: tipoOutput 
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    const formattedResult = {
+                        function: 'ST_SeriesTemporales',
+                        periodicidad: ['', 'Anual', 'Semestral', 'Trimestral', 'Mensual'][periodicidad],
+                        analysis: ['Lista de funciones', 'Cointegración', 'Raíz Unitaria (ADF)', 'Phillips-Perron', 'Jarque-Bera', 'Autocorrelación', 'Descomposición Aditiva', 'Descomposición Multiplicativa'][tipoOutput],
+                        observations: loadedData.length,
+                        timestamp: new Date().toISOString(),
+                        output: result.data || result.output
+                    };
+                    showResult(formatTimeSeriesResult(formattedResult, tipoOutput), 'success');
+                } else {
+                    showResult(`❌ Error: ${result.error}`, 'error');
+                }
+                
+            } catch (error) {
+                showResult(`❌ Error en análisis: ${error.message}`, 'error');
+            }
+        }
+
+        // Simular análisis de series de tiempo
+        async function simulateTimeSeriesAnalysis(data, periodicidad, tipoOutput) {
+            // Simular delay de procesamiento
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            const periodicidadNames = ['', 'Anual', 'Semestral', 'Trimestral', 'Mensual'];
+            const analysisNames = [
+                'Lista de funciones',
+                'Cointegración',
+                'Raíz Unitaria (ADF)',
+                'Phillips-Perron',
+                'Jarque-Bera',
+                'Autocorrelación',
+                'Descomposición Aditiva',
+                'Descomposición Multiplicativa'
+            ];
+
+            const result = {
+                function: 'ST_SeriesTemporales',
+                periodicidad: periodicidadNames[periodicidad],
+                analysis: analysisNames[tipoOutput],
+                observations: data.length,
+                timestamp: new Date().toISOString()
+            };
+
+            switch (tipoOutput) {
+                case 0:
+                    result.output = `Lista de Funciones Disponibles:
+1. Cointegración - Test de Phillips-Ouliaris
+2. Raíz Unitaria - Test de Dickey-Fuller Aumentado
+3. Phillips-Perron - Test de Phillips-Perron
+4. Jarque-Bera - Test de Normalidad
+5. Autocorrelación - Función de Autocorrelación
+6. Descomposición Aditiva - Tendencia + Estacional + Residual
+7. Descomposición Multiplicativa - Tendencia × Estacional × Residual`;
+                    break;
+
+                case 1:
+                    result.output = `Cointegration Test (Phillips-Ouliaris)
+                    
+Data: Serie de Tiempo
+Model: Y ~ X
+Statistic: -2.8456
+p-value: 0.0234
+Alternative hypothesis: cointegrated
+
+Resultado: Las series están cointegradas (p < 0.05)`;
+                    break;
+
+                case 2:
+                    const adfStat = -2.5 - Math.random() * 2;
+                    const pValue = Math.random() * 0.1;
+                    result.output = `Augmented Dickey-Fuller Test
+
+Data: Serie de Tiempo
+Dickey-Fuller = ${adfStat.toFixed(4)}
+Lag order = 3
+p-value = ${pValue.toFixed(4)}
+Alternative hypothesis: stationary
+
+${pValue < 0.05 ? 'Resultado: La serie es estacionaria' : 'Resultado: La serie tiene raíz unitaria (no estacionaria)'}`;
+                    break;
+
+                case 3:
+                    result.output = `Phillips-Perron Unit Root Test
+
+Data: Serie de Tiempo
+Dickey-Fuller Z(alpha) = -15.234
+Truncation lag parameter = 4
+p-value = 0.0456
+Alternative hypothesis: stationary
+
+Resultado: Se rechaza la hipótesis nula de raíz unitaria`;
+                    break;
+
+                case 4:
+                    const jbStat = Math.random() * 10;
+                    result.output = `Jarque Bera Test
+
+Data: Serie de Tiempo
+X-squared = ${jbStat.toFixed(4)}
+df = 2
+p-value = ${(Math.random() * 0.5).toFixed(4)}
+
+Resultado: ${jbStat < 5.99 ? 'Los residuos siguen distribución normal' : 'Los residuos no siguen distribución normal'}`;
+                    break;
+
+                case 5:
+                    result.output = `Función de Autocorrelación
+
+Lag    ACF      PACF     Límite Inf  Límite Sup
+1     0.8234   0.8234   -0.0980     0.0980
+2     0.6789   0.1234   -0.0980     0.0980
+3     0.5432   0.0876   -0.0980     0.0980
+4     0.4321   0.0543   -0.0980     0.0980
+5     0.3456   0.0321   -0.0980     0.0980
+
+Interpretación: Fuerte autocorrelación en los primeros lags`;
+                    break;
+
+                case 6:
+                    result.output = `Descomposición Aditiva: Y = Tendencia + Estacional + Residual
+
+Período   Tendencia   Estacional   Residual
+1         ${data[0].toFixed(2)}      0.00        0.00
+2         ${(data[1] || 0).toFixed(2)}      1.23       -0.45
+3         ${(data[2] || 0).toFixed(2)}      2.34       -1.12
+...       ...         ...          ...
+
+Componentes extraídos exitosamente`;
+                    break;
+
+                case 7:
+                    result.output = `Descomposición Multiplicativa: Y = Tendencia × Estacional × Residual
+
+Período   Tendencia   Estacional   Residual
+1         ${data[0].toFixed(2)}      1.000       1.000
+2         ${(data[1] || 0).toFixed(2)}      1.012       0.987
+3         ${(data[2] || 0).toFixed(2)}      1.023       0.965
+...       ...         ...          ...
+
+Componentes extraídos exitosamente`;
+                    break;
+
+                default:
+                    result.output = 'Análisis completado';
+            }
+
+            return result;
+        }
+
+        // Formatear resultado
+        function formatTimeSeriesResult(result, tipoOutput) {
+            let output = `<div style="font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.4; color: #c9d1d9;">`;
+            
+            // Header
+            output += `<div style="text-align: center; margin-bottom: 20px;">`;
+            output += `<strong>BERT Series de Tiempo - Resultados</strong><br>`;
+            output += `Función: ${result.function}<br>`;
+            output += `Análisis: ${result.analysis}<br>`;
+            output += `Periodicidad: ${result.periodicidad}<br>`;
+            output += `Observaciones: ${result.observations}<br>`;
+            output += `Timestamp: ${new Date(result.timestamp).toLocaleString()}<br>`;
+            output += `</div>`;
+            
+            // Output
+            output += `<pre style="font-family: 'Courier New', monospace; background: #0d1117; padding: 15px; border-radius: 6px; white-space: pre; font-size: 12px; line-height: 1.2; color: #c9d1d9; overflow-x: auto;">${result.output}</pre>`;
+            
+            output += `</div>`;
+            return output;
+        }
+
+        // Cargar ejemplo
+        function loadExample() {
+            document.getElementById('periodicidad').value = '4';
+            document.getElementById('tipoOutput').value = '2';
+            showResult('Use el botón "Cargar Archivo" para comenzar', 'info');
+        }
+
+        // Limpiar todo
+        function clearAll() {
+            loadedData = [];
+            selectedFile = null;
+            sessionId = null;
+            document.getElementById('fileInput').value = '';
+            document.getElementById('loadButton').style.display = 'none';
+            document.getElementById('periodicidad').value = '1';
+            document.getElementById('tipoOutput').value = '0';
+            document.getElementById('result').innerHTML = '';
+            document.getElementById('previewSection').style.display = 'none';
+            document.getElementById('chartSection').style.display = 'none';
+        }
+
+        // Mostrar resultado
+        function showResult(message, type) {
+            const resultDiv = document.getElementById('result');
+            
+            if (typeof message === 'string' && message.includes('<div')) {
+                resultDiv.innerHTML = message;
+            } else {
+                resultDiv.innerHTML = `<pre style="font-family: 'Courier New', monospace; background: #0d1117; padding: 15px; border-radius: 6px; white-space: pre; font-size: 12px; line-height: 1.2; color: #c9d1d9;">${message}</pre>`;
+            }
+            
+            resultDiv.className = type;
+        }
+
+        // Inicializar al cargar
+        window.onload = function() {
+            showResult('Seleccione un archivo (XLSX, CSV, TXT) para comenzar', 'info');
+        };
+    </script>
+</body>
+</html>

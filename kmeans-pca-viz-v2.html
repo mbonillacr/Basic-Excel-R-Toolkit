@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BERT v3.0 - K-Means + PCA Visualización</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+            background: #0d1117;
+            color: #c9d1d9;
+            line-height: 1.5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+            padding: 24px;
+            background: #21262d;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+        }
+        .header h1 {
+            color: #f0f6fc;
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .data-source {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+        .source-option {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 24px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .source-option:hover {
+            border-color: #58a6ff;
+            background: rgba(88, 166, 255, 0.05);
+        }
+        .source-option.active {
+            border-color: #238636;
+            background: rgba(35, 134, 54, 0.1);
+        }
+        .source-option h3 {
+            color: #f0f6fc;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .controls {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .controls h3 {
+            color: #f0f6fc;
+            margin-bottom: 16px;
+        }
+        .control-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        label {
+            color: #f0f6fc;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        input, select {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: #c9d1d9;
+            padding: 8px 12px;
+            font-size: 14px;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #58a6ff;
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
+        }
+        .file-upload {
+            border: 2px dashed #30363d;
+            border-radius: 6px;
+            padding: 24px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: #0d1117;
+            display: none;
+        }
+        .file-upload:hover, .file-upload.dragover {
+            border-color: #58a6ff;
+            background: rgba(88, 166, 255, 0.05);
+        }
+        .file-upload.active {
+            display: block;
+        }
+        button {
+            background: #238636;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            background: #2ea043;
+        }
+        button:disabled {
+            background: #30363d;
+            cursor: not-allowed;
+        }
+        .visualization {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+        .chart-container {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 16px;
+        }
+        .chart-container h4 {
+            color: #f0f6fc;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        .status {
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin: 16px 0;
+            font-size: 14px;
+        }
+        .status.success {
+            background: rgba(46, 160, 67, 0.15);
+            border: 1px solid rgba(46, 160, 67, 0.4);
+            color: #3fb950;
+        }
+        .status.error {
+            background: rgba(248, 81, 73, 0.15);
+            border: 1px solid rgba(248, 81, 73, 0.4);
+            color: #f85149;
+        }
+        .status.info {
+            background: rgba(88, 166, 255, 0.15);
+            border: 1px solid rgba(88, 166, 255, 0.4);
+            color: #58a6ff;
+        }
+        @media (max-width: 768px) {
+            .data-source, .visualization {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>K-Means + PCA Visualización</h1>
+            <p>Análisis de clustering con reducción de dimensionalidad</p>
+        </div>
+
+        <div class="data-source">
+            <div class="source-option active" id="irisOption" onclick="selectDataSource('iris')">
+                <h3>Usar Dataset IRIS</h3>
+                <p>Dataset clásico con 150 observaciones de flores iris con 4 variables numéricas (longitud/ancho de sépalo y pétalo).</p>
+                <div style="margin-top: 12px; font-size: 12px; color: #8b949e;">
+                    Listo para usar • 4 variables • 150 observaciones
+                </div>
+            </div>
+
+            <div class="source-option" id="customOption" onclick="selectDataSource('custom')">
+                <h3>Cargar Datos Propios</h3>
+                <p>Carga tu propio dataset en formato CSV, TXT o XLSX. Debe contener al menos 2 variables numéricas.</p>
+                <div style="margin-top: 12px; font-size: 12px; color: #8b949e;">
+                    CSV/TXT/XLSX • Máx 50MB • Variables numéricas
+                </div>
+            </div>
+        </div>
+
+        <div class="file-upload" id="fileUpload" onclick="document.getElementById('dataFile').click()">
+            <div style="font-size: 16px; margin-bottom: 8px;">Arrastra archivos aquí o haz clic para seleccionar</div>
+            <div style="font-size: 14px; color: #8b949e;">Soporta CSV, TXT, XLSX</div>
+            <input type="file" id="dataFile" style="display: none;" accept=".csv,.txt,.xlsx,.xls" onchange="handleFileUpload(event)">
+        </div>
+
+        <div class="controls">
+            <h3>Parámetros de Análisis</h3>
+            <div class="control-grid">
+                <div class="control-group">
+                    <label for="kClusters">Número de Clusters (K):</label>
+                    <input type="number" id="kClusters" value="3" min="2" max="10">
+                </div>
+                <div class="control-group">
+                    <label for="kOptimo">K Óptimo (máx):</label>
+                    <input type="number" id="kOptimo" value="10" min="2" max="15">
+                </div>
+                <div class="control-group">
+                    <label for="algorithm">Algoritmo K-Means:</label>
+                    <select id="algorithm">
+                        <option value="1">Hartigan-Wong</option>
+                        <option value="2">Lloyd</option>
+                        <option value="3">Forgy</option>
+                        <option value="4">MacQueen</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label for="escala">Escalar Datos:</label>
+                    <select id="escala">
+                        <option value="0">No</option>
+                        <option value="1">Sí</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label for="seed">Semilla:</label>
+                    <input type="number" id="seed" value="123456" min="1">
+                </div>
+                <div class="control-group">
+                    <label for="tipoOutput">Tipo de Salida:</label>
+                    <select id="tipoOutput">
+                        <option value="1">Clusters Asignados</option>
+                        <option value="2">Centroides</option>
+                        <option value="3">Estadísticas por Cluster</option>
+                        <option value="4">Variabilidad Total</option>
+                        <option value="6">Gap Statistic</option>
+                        <option value="7">Método del Codo</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label for="colorPalette">Paleta de Colores:</label>
+                    <select id="colorPalette">
+                        <option value="viridis">Viridis</option>
+                        <option value="plasma">Plasma</option>
+                        <option value="blues">Azules</option>
+                        <option value="reds">Rojos</option>
+                        <option value="greens">Verdes</option>
+                    </select>
+                </div>
+            </div>
+            <div style="text-align: center;">
+                <button onclick="runAnalysis()" id="analyzeBtn">Ejecutar Análisis</button>
+                <button onclick="findOptimalK()" id="optimalBtn">Encontrar K Óptimo</button>
+            </div>
+        </div>
+
+        <div id="statusArea"></div>
+
+        <div class="visualization">
+            <div class="chart-container">
+                <h4>K-Means Clustering</h4>
+                <div id="kmeansChart" style="height: 500px;"></div>
+            </div>
+            <div class="chart-container">
+                <h4>Análisis de Resultados</h4>
+                <div id="resultsChart" style="height: 500px;"></div>
+            </div>
+        </div>
+        
+        <div class="chart-container" style="margin-top: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h4>Tabla de Resultados</h4>
+                <button id="downloadBtn" onclick="downloadTableCSV()" style="background: #0969da; padding: 8px 16px; font-size: 14px; display: none;">
+                    Descargar CSV
+                </button>
+            </div>
+            <div id="resultsTable" style="overflow-x: auto; background: #0d1117; padding: 16px; border-radius: 6px;"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentDataSource = 'iris';
+        let uploadedData = null;
+        let currentVisualizationData = null;
+        let currentElbowData = null;
+        
+        // Paletas de colores BMad
+        const colorPalettes = {
+            viridis: 'Viridis',
+            plasma: 'Plasma', 
+            blues: 'Blues',
+            reds: 'Reds',
+            greens: 'Greens'
+        };
+        
+        function getCurrentColorPalette() {
+            return document.getElementById('colorPalette').value;
+        }
+        
+        function getLineColor() {
+            const palette = getCurrentColorPalette();
+            const colors = {
+                viridis: '#440154',
+                plasma: '#0d0887',
+                blues: '#08519c',
+                reds: '#a50f15',
+                greens: '#00441b'
+            };
+            return colors[palette] || '#58a6ff';
+        }
+
+        function selectDataSource(source) {
+            currentDataSource = source;
+            
+            // Update UI
+            document.getElementById('irisOption').classList.toggle('active', source === 'iris');
+            document.getElementById('customOption').classList.toggle('active', source === 'custom');
+            document.getElementById('fileUpload').classList.toggle('active', source === 'custom');
+            
+            // Reset uploaded data if switching to IRIS
+            if (source === 'iris') {
+                uploadedData = null;
+                showStatus('Dataset IRIS seleccionado', 'success');
+            } else {
+                showStatus('Selecciona un archivo para cargar', 'info');
+            }
+        }
+
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            try {
+                showStatus('Cargando archivo...', 'info');
+                
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const response = await fetch('http://localhost:3002/api/upload-data', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    uploadedData = result;
+                    showStatus(`Archivo cargado: ${result.fileName} (${result.total} filas, ${result.columns} columnas)`, 'success');
+                } else {
+                    throw new Error(result.error);
+                }
+                
+            } catch (error) {
+                console.error('Error uploading file:', error);
+                let errorMessage = 'Error cargando archivo';
+                
+                if (error.message.includes('Failed to fetch')) {
+                    errorMessage = 'No se puede conectar al servidor. Verifica que esté ejecutándose en puerto 3002';
+                } else if (error.message.includes('HTTP')) {
+                    errorMessage = `Error del servidor: ${error.message}`;
+                } else {
+                    errorMessage = error.message;
+                }
+                
+                showStatus(errorMessage, 'error');
+            }
+        }
+
+        async function runAnalysis() {
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            
+            try {
+                analyzeBtn.disabled = true;
+                analyzeBtn.textContent = 'Analizando...';
+                
+                if (currentDataSource === 'custom' && !uploadedData) {
+                    throw new Error('Debe cargar un archivo de datos primero');
+                }
+                
+                const params = {
+                    dataSource: currentDataSource,
+                    sessionId: uploadedData?.sessionId,
+                    k: parseInt(document.getElementById('kClusters').value),
+                    kOptimo: parseInt(document.getElementById('kOptimo').value),
+                    algorithm: parseInt(document.getElementById('algorithm').value),
+                    escala: parseInt(document.getElementById('escala').value),
+                    seed: parseInt(document.getElementById('seed').value),
+                    tipoOutput: parseInt(document.getElementById('tipoOutput').value)
+                };
+                
+                showStatus('Ejecutando análisis K-Means avanzado...', 'info');
+                
+                const response = await fetch('http://localhost:3002/api/kmeans-advanced-analysis', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(params)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus('Análisis completado', 'success');
+                    visualizeAdvancedResults(result.data);
+                } else {
+                    throw new Error(result.error);
+                }
+                
+            } catch (error) {
+                console.error('Error running analysis:', error);
+                let errorMessage = 'Error ejecutando análisis';
+                
+                if (error.message.includes('Failed to fetch')) {
+                    errorMessage = 'No se puede conectar al servidor. Verifica que esté ejecutándose en puerto 3002';
+                } else if (error.message.includes('HTTP')) {
+                    errorMessage = `Error del servidor: ${error.message}`;
+                } else {
+                    errorMessage = error.message;
+                }
+                
+                showStatus(errorMessage, 'error');
+            } finally {
+                analyzeBtn.disabled = false;
+                analyzeBtn.textContent = 'Ejecutar Análisis';
+            }
+        }
+        
+        async function findOptimalK() {
+            const optimalBtn = document.getElementById('optimalBtn');
+            
+            try {
+                optimalBtn.disabled = true;
+                optimalBtn.textContent = 'Buscando...';
+                
+                if (currentDataSource === 'custom' && !uploadedData) {
+                    throw new Error('Debe cargar un archivo de datos primero');
+                }
+                
+                const params = {
+                    dataSource: currentDataSource,
+                    sessionId: uploadedData?.sessionId,
+                    kOptimo: parseInt(document.getElementById('kOptimo').value),
+                    escala: parseInt(document.getElementById('escala').value),
+                    seed: parseInt(document.getElementById('seed').value),
+                    tipoOutput: 7 // Método del codo
+                };
+                
+                showStatus('Buscando K óptimo...', 'info');
+                
+                const response = await fetch('http://localhost:3002/api/kmeans-advanced-analysis', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(params)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus('K óptimo encontrado', 'success');
+                    visualizeElbowMethod(result.data);
+                } else {
+                    throw new Error(result.error);
+                }
+                
+            } catch (error) {
+                console.error('Error finding optimal K:', error);
+                showStatus(`Error: ${error.message}`, 'error');
+            } finally {
+                optimalBtn.disabled = false;
+                optimalBtn.textContent = 'Encontrar K Óptimo';
+            }
+        }
+
+        function visualizeAdvancedResults(data) {
+            currentVisualizationData = data;
+            
+            // K-Means Clustering Plot
+            if (data.visualization) {
+                const kmeansTrace = {
+                    x: data.visualization.x,
+                    y: data.visualization.y,
+                    mode: 'markers',
+                    type: 'scatter',
+                    marker: {
+                        color: data.visualization.clusters,
+                        colorscale: colorPalettes[getCurrentColorPalette()],
+                        size: 8,
+                        line: { color: '#30363d', width: 1 }
+                    },
+                    text: data.visualization.labels,
+                    name: 'Observaciones'
+                };
+
+                const kmeansLayout = {
+                    title: {
+                        text: `K-Means Clustering (K=${data.k})`,
+                        font: { color: '#f0f6fc' }
+                    },
+                    paper_bgcolor: '#161b22',
+                    plot_bgcolor: '#0d1117',
+                    font: { color: '#c9d1d9' },
+                    xaxis: { 
+                        title: 'Componente 1',
+                        gridcolor: '#30363d',
+                        zerolinecolor: '#30363d'
+                    },
+                    yaxis: { 
+                        title: 'Componente 2',
+                        gridcolor: '#30363d',
+                        zerolinecolor: '#30363d'
+                    }
+                };
+
+                Plotly.newPlot('kmeansChart', [kmeansTrace], kmeansLayout, {
+                    displayModeBar: true,
+                    displaylogo: false,
+                    responsive: true
+                });
+            }
+            
+            // Results Chart
+            if (data.chartData) {
+                // Aplicar paleta de colores a las trazas
+                const updatedTraces = data.chartData.traces.map(trace => {
+                    if (trace.marker) {
+                        trace.marker.color = getLineColor();
+                    }
+                    if (trace.line) {
+                        trace.line.color = getLineColor();
+                    }
+                    return trace;
+                });
+                
+                Plotly.newPlot('resultsChart', updatedTraces, data.chartData.layout, {
+                    displayModeBar: true,
+                    displaylogo: false,
+                    responsive: true
+                });
+            }
+            
+            // Results Table
+            if (data.table) {
+                displayResultsTable(data.table);
+            }
+        }
+        
+        function visualizeElbowMethod(data) {
+            currentElbowData = data;
+            const lineColor = getLineColor();
+            
+            const trace = {
+                x: data.k_values,
+                y: data.within_ss,
+                mode: 'lines+markers',
+                type: 'scatter',
+                line: { color: lineColor, width: 3 },
+                marker: { color: lineColor, size: 8 },
+                name: 'Varianza Intra-Cluster'
+            };
+
+            const layout = {
+                title: {
+                    text: 'Método del Codo para K Óptimo',
+                    font: { color: '#f0f6fc' }
+                },
+                paper_bgcolor: '#161b22',
+                plot_bgcolor: '#0d1117',
+                font: { color: '#c9d1d9' },
+                xaxis: { 
+                    title: 'Número de Clusters (K)',
+                    gridcolor: '#30363d',
+                    zerolinecolor: '#30363d'
+                },
+                yaxis: { 
+                    title: 'Varianza Intra-Cluster',
+                    gridcolor: '#30363d',
+                    zerolinecolor: '#30363d'
+                }
+            };
+
+            Plotly.newPlot('resultsChart', [trace], layout, {
+                displayModeBar: true,
+                displaylogo: false,
+                responsive: true
+            });
+        }
+        
+        let currentTableData = null;
+        
+        function displayResultsTable(tableData) {
+            currentTableData = tableData;
+            
+            let html = '<table style="width: 100%; border-collapse: collapse; color: #c9d1d9;">';
+            
+            // Headers
+            if (tableData.headers) {
+                html += '<thead><tr>';
+                tableData.headers.forEach(header => {
+                    html += `<th style="border: 1px solid #30363d; padding: 8px; background: #21262d;">${header}</th>`;
+                });
+                html += '</tr></thead>';
+            }
+            
+            // Rows - mostrar solo primeros 10 si hay más de 50
+            const totalRows = tableData.rows.length;
+            const displayRows = totalRows > 50 ? tableData.rows.slice(0, 10) : tableData.rows;
+            
+            html += '<tbody>';
+            displayRows.forEach(row => {
+                html += '<tr>';
+                row.forEach(cell => {
+                    html += `<td style="border: 1px solid #30363d; padding: 8px;">${cell}</td>`;
+                });
+                html += '</tr>';
+            });
+            
+            // Agregar fila informativa si hay más de 50 registros
+            if (totalRows > 50) {
+                html += '<tr style="background: rgba(88, 166, 255, 0.1);">';
+                const colspan = tableData.headers ? tableData.headers.length : tableData.rows[0].length;
+                html += `<td colspan="${colspan}" style="border: 1px solid #58a6ff; padding: 12px; text-align: center; color: #58a6ff; font-weight: bold;">`;
+                html += `>>> TABLA COMPLETA: ${totalRows} registros. Mostrando primeros 10. Use el botón "Descargar CSV" para obtener todos los datos <<<`;
+                html += '</td></tr>';
+            }
+            
+            html += '</tbody></table>';
+            
+            document.getElementById('resultsTable').innerHTML = html;
+            
+            // Mostrar/ocultar botón de descarga
+            const downloadBtn = document.getElementById('downloadBtn');
+            if (totalRows > 0) {
+                downloadBtn.style.display = 'block';
+            } else {
+                downloadBtn.style.display = 'none';
+            }
+        }
+        
+        function downloadTableCSV() {
+            if (!currentTableData) {
+                showStatus('No hay datos para descargar', 'error');
+                return;
+            }
+            
+            try {
+                let csvContent = '';
+                
+                // Headers
+                if (currentTableData.headers) {
+                    csvContent += currentTableData.headers.join(',') + '\n';
+                }
+                
+                // Rows
+                currentTableData.rows.forEach(row => {
+                    const escapedRow = row.map(cell => {
+                        // Escapar comillas y envolver en comillas si contiene comas
+                        const cellStr = String(cell);
+                        if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
+                            return '"' + cellStr.replace(/"/g, '""') + '"';
+                        }
+                        return cellStr;
+                    });
+                    csvContent += escapedRow.join(',') + '\n';
+                });
+                
+                // Crear y descargar archivo
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                const url = URL.createObjectURL(blob);
+                
+                link.setAttribute('href', url);
+                link.setAttribute('download', `kmeans_resultados_${new Date().toISOString().slice(0, 10)}.csv`);
+                link.style.visibility = 'hidden';
+                
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                showStatus(`Archivo CSV descargado (${currentTableData.rows.length} registros)`, 'success');
+                
+            } catch (error) {
+                console.error('Error downloading CSV:', error);
+                showStatus('Error al descargar el archivo CSV', 'error');
+            }
+        }
+
+        function showStatus(message, type) {
+            const statusArea = document.getElementById('statusArea');
+            statusArea.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        // Drag and drop functionality
+        const fileUpload = document.getElementById('fileUpload');
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            fileUpload.addEventListener(eventName, preventDefaults, false);
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            fileUpload.addEventListener(eventName, () => fileUpload.classList.add('dragover'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            fileUpload.addEventListener(eventName, () => fileUpload.classList.remove('dragover'), false);
+        });
+
+        fileUpload.addEventListener('drop', (e) => {
+            const files = e.dataTransfer.files;
+            document.getElementById('dataFile').files = files;
+            handleFileUpload({ target: { files } });
+        }, false);
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        // Listener para cambio de paleta
+        document.getElementById('colorPalette').addEventListener('change', function() {
+            updateChartsColors();
+        });
+        
+        function updateChartsColors() {
+            if (currentVisualizationData) {
+                visualizeAdvancedResults(currentVisualizationData);
+            }
+            if (currentElbowData) {
+                visualizeElbowMethod(currentElbowData);
+            }
+        }
+        
+        // Initialize
+        showStatus('Selecciona una fuente de datos para comenzar', 'info');
+        
+        // Ocultar botón de descarga inicialmente
+        document.getElementById('downloadBtn').style.display = 'none';
+    </script>
+</body>
+</html>

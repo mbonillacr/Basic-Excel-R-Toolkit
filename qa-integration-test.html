@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QA Integration Test - BERT v3.0</title>
+    <style>
+        body { font-family: monospace; background: #0d1117; color: #c9d1d9; padding: 20px; }
+        .test { margin: 10px 0; padding: 10px; border: 1px solid #30363d; border-radius: 6px; }
+        .pass { border-color: #3fb950; background: #0d1117; }
+        .fail { border-color: #f85149; background: #21262d; }
+        .running { border-color: #f9ab00; background: #21262d; }
+        button { background: #f85149; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin: 5px; }
+        #results { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>🧪 QA Integration Test - BERT v3.0</h1>
+    
+    <div>
+        <button onclick="runAllTests()">Ejecutar Todas las Pruebas</button>
+        <button onclick="testServerHealth()">Test 1: Health Check</button>
+        <button onclick="testFileUpload()">Test 2: Upload File</button>
+        <button onclick="testAnalysis()">Test 3: Analysis</button>
+    </div>
+    
+    <div id="results"></div>
+
+    <script>
+        let testResults = [];
+        
+        function addResult(testName, status, message) {
+            const div = document.createElement('div');
+            div.className = `test ${status}`;
+            div.innerHTML = `
+                <strong>${testName}</strong>: 
+                <span style="color: ${status === 'pass' ? '#3fb950' : status === 'fail' ? '#f85149' : '#f9ab00'}">
+                    ${status.toUpperCase()}
+                </span><br>
+                <small>${message}</small>
+            `;
+            document.getElementById('results').appendChild(div);
+            testResults.push({testName, status, message});
+        }
+        
+        async function testServerHealth() {
+            addResult('Health Check', 'running', 'Verificando servidor...');
+            
+            try {
+                const response = await fetch('/api/health');
+                const result = await response.json();
+                
+                if (result.success && result.rAvailable) {
+                    addResult('Health Check', 'pass', `Servidor OK - R disponible: ${result.rAvailable}`);
+                    return true;
+                } else {
+                    addResult('Health Check', 'fail', `Servidor OK pero R no disponible`);
+                    return false;
+                }
+            } catch (error) {
+                addResult('Health Check', 'fail', `Error: ${error.message}`);
+                return false;
+            }
+        }
+        
+        async function testFileUpload() {
+            addResult('File Upload', 'running', 'Creando archivo de prueba...');
+            
+            try {
+                // Crear archivo de prueba
+                const testData = '10\\n12\\n13\\n12\\n15\\n16\\n18\\n17\\n19\\n20';
+                const blob = new Blob([testData], { type: 'text/plain' });
+                const formData = new FormData();
+                formData.append('file', blob, 'test-data.txt');
+                
+                const response = await fetch('/api/upload-timeseries', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success && result.sessionId) {
+                    addResult('File Upload', 'pass', `Archivo cargado - ${result.total} observaciones, SessionID: ${result.sessionId.substring(0,8)}...`);
+                    window.testSessionId = result.sessionId;
+                    return true;
+                } else {
+                    addResult('File Upload', 'fail', `Error: ${result.error}`);
+                    return false;
+                }
+            } catch (error) {
+                addResult('File Upload', 'fail', `Error: ${error.message}`);
+                return false;
+            }
+        }
+        
+        async function testAnalysis() {
+            if (!window.testSessionId) {
+                addResult('Analysis', 'fail', 'No hay sessionId disponible - ejecuta primero File Upload');
+                return false;
+            }
+            
+            addResult('Analysis', 'running', 'Ejecutando análisis de series temporales...');
+            
+            try {
+                const response = await fetch('/api/timeseries-analysis', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        dataSource: 'user',
+                        sessionId: window.testSessionId,
+                        periodicidad: 4,
+                        tipoAnalisis: 'ST_SeriesTemporales',
+                        tipoOutput: 0
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success && result.data) {
+                    addResult('Analysis', 'pass', `Análisis completado - ${result.data.analysis || 'Estadísticas básicas'}`);
+                    return true;
+                } else {
+                    addResult('Analysis', 'fail', `Error: ${result.error}`);
+                    return false;
+                }
+            } catch (error) {
+                addResult('Analysis', 'fail', `Error: ${error.message}`);
+                return false;
+            }
+        }
+        
+        async function runAllTests() {
+            document.getElementById('results').innerHTML = '';
+            testResults = [];
+            
+            console.log('🧪 Iniciando suite de pruebas de integración...');
+            
+            const test1 = await testServerHealth();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            const test2 = await testFileUpload();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            const test3 = await testAnalysis();
+            
+            // Resumen
+            const passed = testResults.filter(r => r.status === 'pass').length;
+            const total = testResults.length;
+            
+            const summaryDiv = document.createElement('div');
+            summaryDiv.className = `test ${passed === total ? 'pass' : 'fail'}`;
+            summaryDiv.innerHTML = `
+                <strong>📊 RESUMEN FINAL</strong><br>
+                <strong>Pruebas pasadas: ${passed}/${total}</strong><br>
+                <strong>Estado: ${passed === total ? '✅ SISTEMA LISTO' : '❌ REQUIERE ATENCIÓN'}</strong>
+            `;
+            document.getElementById('results').appendChild(summaryDiv);
+            
+            console.log(`🏁 Pruebas completadas: ${passed}/${total} exitosas`);
+        }
+        
+        // Auto-ejecutar al cargar
+        window.onload = function() {
+            console.log('🧪 QA Integration Test cargado');
+            console.log('Haz clic en "Ejecutar Todas las Pruebas" para comenzar');
+        };
+    </script>
+</body>
+</html>

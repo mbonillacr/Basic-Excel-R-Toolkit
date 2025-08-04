@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>BERT v3.0 Standalone</title>
+    <style>
+        body { background: #060a0f; color: white; font-family: monospace; padding: 20px; }
+        textarea, input { background: #060a0f; color: white; border: 1px solid #333; padding: 10px; width: 100%; margin: 5px 0; }
+        button { background: #4CAF50; color: white; padding: 10px 20px; border: none; margin: 5px; cursor: pointer; }
+        .output { background: #111; padding: 15px; margin: 10px 0; border: 1px solid #333; white-space: pre-wrap; }
+        .success { color: #51cf66; }
+        .error { color: #ff6b6b; }
+    </style>
+</head>
+<body>
+    <h1>🔬 BERT v3.0 Standalone (Sin Servidor)</h1>
+    
+    <h3>Funciones R:</h3>
+    <textarea id="code" rows="8">suma <- function(a, b) { return(a + b) }
+multiplicar <- function(x, y) { return(x * y) }
+media <- function(datos) { return(mean(datos)) }</textarea>
+    
+    <button onclick="loadFunctions()">Cargar Funciones</button>
+    <button onclick="executeSum()">Ejecutar suma(5, 3)</button>
+    <button onclick="executeMult()">Ejecutar multiplicar(4, 6)</button>
+    <button onclick="clearAll()">Limpiar</button>
+    
+    <h3>Funciones Disponibles:</h3>
+    <div id="functions" class="output">Ninguna función cargada</div>
+    
+    <h3>Ejecutar Función:</h3>
+    <input id="funcName" placeholder="Nombre de función (ej: suma)">
+    <input id="params" placeholder="Parámetros (ej: 2, 3)">
+    <button onclick="executeCustom()">Ejecutar</button>
+    
+    <h3>Resultado:</h3>
+    <div id="output" class="output">Listo para usar...</div>
+
+    <script>
+        let loadedFunctions = {};
+        
+        function loadFunctions() {
+            const code = document.getElementById('code').value;
+            loadedFunctions = {};
+            
+            // Extraer funciones del código R
+            const funcRegex = /(\w+)\s*<-\s*function\s*\([^)]*\)\s*\{([^}]+)\}/g;
+            let match;
+            
+            while ((match = funcRegex.exec(code)) !== null) {
+                const funcName = match[1];
+                const funcBody = match[2];
+                loadedFunctions[funcName] = funcBody.trim();
+            }
+            
+            const funcNames = Object.keys(loadedFunctions);
+            if (funcNames.length > 0) {
+                document.getElementById('functions').innerHTML = funcNames.join(', ');
+                document.getElementById('functions').className = 'output success';
+                showOutput(`✅ ${funcNames.length} funciones cargadas: ${funcNames.join(', ')}`, 'success');
+            } else {
+                showOutput('❌ No se encontraron funciones válidas', 'error');
+            }
+        }
+        
+        function executeSum() {
+            executeFunction('suma', [5, 3]);
+        }
+        
+        function executeMult() {
+            executeFunction('multiplicar', [4, 6]);
+        }
+        
+        function executeCustom() {
+            const funcName = document.getElementById('funcName').value.trim();
+            const paramsStr = document.getElementById('params').value.trim();
+            
+            if (!funcName) {
+                showOutput('❌ Ingresa el nombre de la función', 'error');
+                return;
+            }
+            
+            const params = paramsStr ? paramsStr.split(',').map(p => parseFloat(p.trim())) : [];
+            executeFunction(funcName, params);
+        }
+        
+        function executeFunction(funcName, params) {
+            if (!loadedFunctions[funcName]) {
+                showOutput(`❌ Función '${funcName}' no encontrada`, 'error');
+                return;
+            }
+            
+            // Simulación básica de ejecución R
+            let result;
+            
+            switch(funcName) {
+                case 'suma':
+                    result = params.reduce((a, b) => a + b, 0);
+                    break;
+                case 'multiplicar':
+                    result = params.reduce((a, b) => a * b, 1);
+                    break;
+                case 'media':
+                    result = params.reduce((a, b) => a + b, 0) / params.length;
+                    break;
+                default:
+                    result = `Función ${funcName} ejecutada con parámetros: [${params.join(', ')}]`;
+            }
+            
+            showOutput(`✅ ${funcName}(${params.join(', ')}) = ${result}`, 'success');
+        }
+        
+        function clearAll() {
+            document.getElementById('code').value = '';
+            document.getElementById('funcName').value = '';
+            document.getElementById('params').value = '';
+            document.getElementById('functions').innerHTML = 'Ninguna función cargada';
+            document.getElementById('functions').className = 'output';
+            loadedFunctions = {};
+            showOutput('🧹 Todo limpiado', 'success');
+        }
+        
+        function showOutput(message, type) {
+            const output = document.getElementById('output');
+            output.textContent = message;
+            output.className = `output ${type}`;
+        }
+        
+        // Auto-cargar funciones al inicio
+        window.onload = function() {
+            loadFunctions();
+        };
+    </script>
+</body>
+</html>

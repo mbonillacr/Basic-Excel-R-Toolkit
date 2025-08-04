@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BERT v3.0 - Funciones R Personalizadas</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: #ffffff;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #ffffff;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .section h3 {
+            margin-top: 0;
+            color: #87ceeb;
+        }
+        textarea, input, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            background-color: #060a0f;
+            color: #ffffff;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 200px;
+        }
+        button {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        .function-list {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .function-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        .function-item:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        .output {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .error {
+            color: #ff6b6b;
+        }
+        .success {
+            color: #51cf66;
+        }
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) {
+            .two-column {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔬 BERT v3.0 - Funciones R Personalizadas</h1>
+        
+        <div class="two-column">
+            <div class="section">
+                <h3>📝 Cargar Funciones R</h3>
+                <textarea id="rCode" placeholder="# Escribe tus funciones R aquí
+# Ejemplo:
+mi_funcion <- function(x, y) {
+    resultado <- x + y
+    return(resultado)
+}
+
+calcular_media <- function(datos) {
+    return(mean(datos))
+}"></textarea>
+                <button onclick="loadRFunctions()">Cargar Funciones</button>
+                <button onclick="clearCode()">Limpiar</button>
+            </div>
+            
+            <div class="section">
+                <h3>🎯 Funciones Disponibles</h3>
+                <div id="functionList" class="function-list">
+                    <div class="function-item">No hay funciones cargadas</div>
+                </div>
+                <button onclick="refreshFunctions()">Actualizar Lista</button>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h3>⚡ Ejecutar Función</h3>
+            <div style="display: grid; grid-template-columns: 2fr 3fr; gap: 15px; margin-bottom: 15px;">
+                <select id="functionSelect">
+                    <option value="">Seleccionar función...</option>
+                </select>
+                <input type="text" id="functionParams" placeholder="Parámetros (ej: 5, 10 o c(1,2,3,4,5))">
+            </div>
+            <button onclick="executeFunction()">Ejecutar Función</button>
+            <button onclick="executeRCode()">Ejecutar Código R Directo</button>
+        </div>
+        
+        <div class="section">
+            <h3>📊 Resultado</h3>
+            <div id="output" class="output">Listo para ejecutar funciones R...</div>
+        </div>
+    </div>
+
+    <script>
+        let loadedFunctions = [];
+        
+        async function loadRFunctions() {
+            const code = document.getElementById('rCode').value;
+            if (!code.trim()) {
+                showOutput('Error: No hay código para cargar', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/load-functions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    loadedFunctions = result.functions;
+                    updateFunctionList();
+                    showOutput(`✅ Funciones cargadas exitosamente:\n${result.functions.join(', ')}`, 'success');
+                } else {
+                    showOutput(`❌ Error al cargar funciones:\n${result.error}`, 'error');
+                }
+            } catch (error) {
+                showOutput(`❌ Error de conexión: ${error.message}`, 'error');
+            }
+        }
+        
+        async function executeFunction() {
+            const functionName = document.getElementById('functionSelect').value;
+            const params = document.getElementById('functionParams').value;
+            
+            if (!functionName) {
+                showOutput('Error: Selecciona una función', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/execute-function', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ functionName, params })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    showOutput(`📊 Resultado de ${functionName}:\n${result.output}`, 'success');
+                } else {
+                    showOutput(`❌ Error en ejecución:\n${result.error}`, 'error');
+                }
+            } catch (error) {
+                showOutput(`❌ Error de conexión: ${error.message}`, 'error');
+            }
+        }
+        
+        async function executeRCode() {
+            const code = document.getElementById('rCode').value;
+            if (!code.trim()) {
+                showOutput('Error: No hay código para ejecutar', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/execute-r', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    showOutput(`📊 Resultado:\n${result.output}`, 'success');
+                } else {
+                    showOutput(`❌ Error en ejecución:\n${result.error}`, 'error');
+                }
+            } catch (error) {
+                showOutput(`❌ Error de conexión: ${error.message}`, 'error');
+            }
+        }
+        
+        function updateFunctionList() {
+            const listDiv = document.getElementById('functionList');
+            const selectElement = document.getElementById('functionSelect');
+            
+            if (loadedFunctions.length === 0) {
+                listDiv.innerHTML = '<div class="function-item">No hay funciones cargadas</div>';
+                selectElement.innerHTML = '<option value="">Seleccionar función...</option>';
+                return;
+            }
+            
+            listDiv.innerHTML = loadedFunctions.map(func => 
+                `<div class="function-item" onclick="selectFunction('${func}')">${func}</div>`
+            ).join('');
+            
+            selectElement.innerHTML = '<option value="">Seleccionar función...</option>' +
+                loadedFunctions.map(func => `<option value="${func}">${func}</option>`).join('');
+        }
+        
+        function selectFunction(functionName) {
+            document.getElementById('functionSelect').value = functionName;
+        }
+        
+        function refreshFunctions() {
+            updateFunctionList();
+            showOutput('Lista de funciones actualizada', 'success');
+        }
+        
+        function clearCode() {
+            document.getElementById('rCode').value = '';
+            document.getElementById('functionParams').value = '';
+            showOutput('Código limpiado', 'success');
+        }
+        
+        function showOutput(message, type = '') {
+            const output = document.getElementById('output');
+            output.textContent = message;
+            output.className = `output ${type}`;
+        }
+        
+        // Cargar funciones de ejemplo al inicio
+        window.onload = function() {
+            document.getElementById('rCode').value = `# Funciones de ejemplo
+mi_suma <- function(a, b) {
+    return(a + b)
+}
+
+estadisticas <- function(datos) {
+    nums <- as.numeric(unlist(strsplit(datos, ",")))
+    return(paste("Media:", mean(nums), "| Mediana:", median(nums), "| SD:", sd(nums)))
+}
+
+regresion_simple <- function(x, y) {
+    x_vals <- as.numeric(unlist(strsplit(x, ",")))
+    y_vals <- as.numeric(unlist(strsplit(y, ",")))
+    modelo <- lm(y_vals ~ x_vals)
+    return(summary(modelo))
+}`;
+        };
+    </script>
+</body>
+</html>

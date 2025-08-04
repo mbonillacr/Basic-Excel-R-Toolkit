@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>BERT v3.0 #YOLO</title>
+    <style>
+        body { background: #060a0f; color: white; font-family: monospace; padding: 20px; }
+        textarea, input { background: #060a0f; color: white; border: 1px solid #333; padding: 10px; width: 100%; margin: 5px 0; }
+        button { background: #4CAF50; color: white; padding: 10px 20px; border: none; margin: 5px; cursor: pointer; }
+        .output { background: #111; padding: 15px; margin: 10px 0; border: 1px solid #333; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>🔬 BERT v3.0 #YOLO MODE</h1>
+    
+    <h3>R Code:</h3>
+    <textarea id="code" rows="6">suma <- function(a, b) { return(a + b) }</textarea>
+    
+    <button onclick="loadFunc()">Load</button>
+    <button onclick="execFunc()">Execute suma(2,3)</button>
+    <button onclick="testR()">Test R</button>
+    
+    <div id="out" class="output">Ready...</div>
+
+    <script>
+        const API = 'http://localhost:3001/api';
+        
+        async function loadFunc() {
+            try {
+                const res = await fetch(`${API}/load-functions`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({code: document.getElementById('code').value})
+                });
+                const data = await res.json();
+                document.getElementById('out').textContent = data.success ? 
+                    `✅ Loaded: ${data.functions.join(', ')}` : 
+                    `❌ Error: ${data.error}`;
+            } catch(e) {
+                document.getElementById('out').textContent = `❌ Connection: ${e.message}`;
+            }
+        }
+        
+        async function execFunc() {
+            try {
+                const res = await fetch(`${API}/execute-function`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({functionName: 'suma', params: '2, 3'})
+                });
+                const data = await res.json();
+                document.getElementById('out').textContent = data.success ? 
+                    `✅ Result: ${data.output}` : 
+                    `❌ Error: ${data.error}`;
+            } catch(e) {
+                document.getElementById('out').textContent = `❌ Connection: ${e.message}`;
+            }
+        }
+        
+        async function testR() {
+            try {
+                const res = await fetch(`${API}/execute-r`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({code: '1 + 1'})
+                });
+                const data = await res.json();
+                document.getElementById('out').textContent = data.success ? 
+                    `✅ R Works: ${data.output}` : 
+                    `❌ R Error: ${data.error}`;
+            } catch(e) {
+                document.getElementById('out').textContent = `❌ Connection: ${e.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

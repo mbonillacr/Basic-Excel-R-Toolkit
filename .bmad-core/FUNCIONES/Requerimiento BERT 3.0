@@ -1,0 +1,129 @@
+# Requerimiento Técnico Detallado: BERT 3.0 - Plataforma Web para Análisis Estadístico
+
+## 1. Resumen Ejecutivo
+El presente documento detalla los requerimientos técnicos y funcionales para el desarrollo de la plataforma web **BERT 3.0**. El objetivo es crear una interfaz de usuario minimalista y extensible que sirva como "frontend" para un motor de análisis estadístico en **R**. La plataforma permitirá la carga de datos, la ejecución de scripts de usuario, la gestión de dependencias de librerías de R y una visualización avanzada de resultados.
+
+---
+
+## 2. Arquitectura de Software Propuesta
+
+Se propone una arquitectura de microservicios o de tres capas bien definidas para maximizar la escalabilidad, la mantenibilidad y la portabilidad.
+
+### 2.1. Capa de Presentación (Frontend)
+* **Tecnología Recomendada:** **React** o **Vue.js** (preferiblemente React por su ecosistema y amplia comunidad).
+* **Gestión de Estado:** **Redux** o **Zustand** para gestionar el estado de la aplicación de forma predecible (por ejemplo, el estado de la carga de archivos, los datos previsualizados, los scripts cargados).
+* **Librerías de UI:** Se sugiere el uso de un _framework_ de componentes como **MUI**, **Ant Design** o **Chakra UI** para implementar rápidamente el diseño de tema oscuro.
+* **Visualización de Gráficos:** **React Plotly.js** o **Vue Plotly.js** para renderizar los gráficos interactivos generados por el motor de R.
+
+### 2.2. Capa de Lógica de Negocio (Backend)
+* **Tecnología Recomendada:** **Node.js** con el _framework_ **Express.js** o **Python** con **FastAPI** o **Flask**. Se recomienda Node.js por su capacidad para manejar operaciones I/O intensivas de forma eficiente (carga de archivos, comunicación asíncrona).
+* **Servicio de Archivos:** La gestión de la carga, almacenamiento temporal y eliminación de archivos debe ser robusta. Se puede usar librerías como `multer` en Node.js. Los archivos deben almacenarse en una ubicación temporal segura y eliminarse después de su uso o al cerrar la sesión del usuario.
+* **Cola de Tareas:** Se debe implementar un sistema de cola de tareas asíncronas para la ejecución de los scripts de R. Esto evita que el _backend_ se bloquee. Tecnologías como **RabbitMQ** o **Redis (con BullMQ)** son ideales para este propósito.
+* **Gestión de Sesiones:** Implementación de un mecanismo seguro para la gestión de sesiones de usuario, asociando los archivos cargados y los scripts a cada sesión.
+
+### 2.3. Capa de Análisis (Motor de R)
+* **Entorno Contenerizado:** El motor de R debe correr dentro de un contenedor **Docker**. Esto garantiza que el entorno de ejecución sea idéntico en desarrollo, pruebas y producción, resolviendo problemas de "funciona en mi máquina".
+* **Interacción con el Backend:** La comunicación entre el _backend_ y el contenedor de R se puede realizar a través de una API REST local, `websockets` para _streaming_ de resultados en tiempo real, o simplemente ejecutando comandos de R desde el _backend_ y capturando la salida (`stdout` y `stderr`).
+* **Gestión de Librerías:** El script de ejecución de R debe ser capaz de analizar los `library(...)` o `require(...)` del script de usuario y utilizar `install.packages()` para instalar las dependencias faltantes. Se debe considerar el uso de un _proxy_ de paquetes como **`CRAN`** para una instalación más rápida y fiable.
+* **Serialización de Datos:** Los datos (tablas, gráficos) deben ser serializados en formatos universales como **JSON** para ser fácilmente consumidos por el _backend_ y el _frontend_.
+
+---
+
+## 3. Requisitos Funcionales Detallados
+
+### 3.1. RF1: Módulo de Carga y Previsualización de Datos
+* **RF1.1. Carga de Archivos:**
+    * Soporte para `CSV`, `TXT` y `XLS/XLSX`.
+    * Interfaz de usuario con "drag-and-drop" y un botón para seleccionar archivos.
+    * Tamaño máximo de archivo: 50MB (este valor debe ser configurable).
+* **RF1.2. Previsualización y Detección de Parámetros:**
+    * Al subir un archivo, el _backend_ debe detectar el tipo de archivo y, en el caso de `CSV`/`TXT`, inferir automáticamente el separador, el encabezado y el tipo de codificación (por ejemplo, `UTF-8`).
+    * El _frontend_ mostrará una tabla con una muestra de las primeras 100 filas y 10 columnas.
+    * Se deben ofrecer opciones de configuración manual para que el usuario pueda corregir el separador o la codificación si la detección automática falla.
+* **RF1.3. Criterios de Aceptación:**
+    * Un usuario puede cargar un archivo de datos y ver una vista previa sin errores.
+    * El sistema infiere correctamente el formato en el 80% de los casos de prueba.
+
+### 3.2. RF2: Módulo de Gestión de Scripts y Dependencias
+* **RF2.1. Carga de Scripts:**
+    * Interfaz para subir scripts de R (`.R`).
+    * Validación en el _backend_ para asegurar que el archivo tiene la extensión `.R`.
+* **RF2.2. Parsing de Scripts:**
+    * El _backend_ debe ejecutar un script de R (`parser.R`) que reciba el archivo del usuario y devuelva una lista de todas las funciones declaradas (`function_name <- function(...)`).
+    * Este `parser.R` también debe identificar todas las llamadas a `library()` o `require()`.
+* **RF2.3. Gestión de Dependencias:**
+    * Antes de ejecutar un script, el motor de R debe verificar si las librerías detectadas están instaladas.
+    * Si una librería no está instalada, se debe ejecutar un comando como `install.packages("nombre_de_libreria", dependencies = TRUE)` en segundo plano.
+    * Se debe notificar al usuario sobre el estado de la instalación de las dependencias.
+
+### 3.3. RF3: Módulo de Ejecución y Visualización de Resultados
+* **RF3.1. Interfaz de Ejecución:**
+    * Un _dropdown_ (`<select>`) llamado `TipoOutput` que se llena dinámicamente con los nombres de las funciones detectadas en el script.
+    * Botón "Ejecutar Análisis".
+* **RF3.2. Flujo de Ejecución Asíncrona:**
+    * Al hacer clic en "Ejecutar", el _frontend_ envía una solicitud al _backend_ (`POST /api/run-analysis`).
+    * El _backend_ encola la tarea y devuelve un `job_id`.
+    * El _frontend_ debe hacer _polling_ (`GET /api/status/<job_id>`) o usar `websockets` para obtener el estado de la tarea (en cola, en progreso, completada, fallida).
+* **RF3.3. Visualización de Salida de Texto:**
+    * La salida estándar (`stdout`) del proceso de R debe ser capturada por el _backend_.
+    * El _frontend_ mostrará esta salida en un componente de código o preformateado.
+    * Si el script genera una salida con `STARGAZER` (detectada por la etiqueta HTML `<table class="stargazer">`), el _frontend_ debe renderizarla como una tabla HTML formateada.
+* **RF3.4. Visualización de Gráficos (Plotly):**
+    * El motor de R debe ser configurado para serializar la salida de los gráficos generados con `plotly` en un objeto JSON.
+    * El _backend_ debe transmitir este JSON al _frontend_.
+    * El _frontend_ debe usar la librería de Plotly de React o Vue para renderizar el gráfico interactivo.
+
+---
+
+## 4. Requisitos No Funcionales Detallados
+
+### 4.1. RNF1: Diseño de Interfaz de Usuario (UI/UX)
+* **Tema Oscuro (`dark theme`):** Paleta de colores (`#0d1117` para fondos, `#c9d1d9` para texto principal, `#21262d` para elementos secundarios), inspirada en GitHub.
+* **Usabilidad:** La interfaz debe ser intuitiva, con una clara separación entre los módulos de carga de datos, scripts y visualización.
+* **Responsividad:** La plataforma debe ser totalmente funcional en dispositivos móviles y de escritorio.
+
+### 4.2. RNF2: Rendimiento y Escalabilidad
+* **Tiempo de Respuesta:**
+    * La carga de un archivo de 50MB no debe tardar más de 10 segundos.
+    * La ejecución de un script de análisis debe ser notificada al usuario como "En Progreso" en menos de 1 segundo.
+* **Mantenimiento:** La arquitectura contenerizada y la separación de responsabilidades facilitan las actualizaciones del motor de R y la posible adición de otros motores como Julia en el futuro.
+
+---
+
+## 5. Riesgos Potenciales y Soluciones Propuestas
+
+* **Riesgo:** Inestabilidad en la instalación de librerías de R.
+    * **Solución:** Uso de un repositorio de paquetes `CRAN` estable o la creación de un repositorio privado (`miniCRAN`) para un control total. Se debe implementar un mecanismo de _retry_ en caso de fallos en la instalación.
+* **Riesgo:** Vulnerabilidad al ejecutar código de usuario arbitrario.
+    * **Solución:** Ejecutar el motor de R en un entorno _sandboxed_ dentro de un contenedor Docker con permisos de usuario limitados. Se debe considerar la implementación de un _whitelist_ de funciones permitidas en el _backend_ antes de enviar el script a R.
+* **Riesgo:** Problemas de rendimiento con archivos de datos muy grandes.
+    * **Solución:** Se puede implementar un _streaming_ de datos para la previsualización en lugar de cargar todo el archivo en memoria. También se podría ofrecer una opción para que el usuario suba archivos directamente a un servicio de almacenamiento en la nube (como S3) para el procesamiento distribuido en el futuro.
+
+---
+
+## 6. Plan de Trabajo Detallado (Ruta Crítica)
+
+Se sugiere un enfoque ágil con _sprints_ de 2 semanas.
+
+1.  **Sprint 1: Configuración de la Arquitectura y Backend Base (Tareas paralelas)**
+    * Configurar los repositorios de código.
+    * Crear la imagen base de Docker para R.
+    * Desarrollar el _backend_ con _endpoints_ de carga de archivos y scripts.
+    * Implementar la lógica de parsing de scripts para detectar funciones y librerías.
+
+2.  **Sprint 2: Desarrollo del Frontend y UI/UX (Tareas paralelas)**
+    * Diseño y desarrollo de los componentes de la UI con el tema oscuro.
+    * Implementación del módulo de carga de archivos (con "drag-and-drop").
+    * Implementación del componente de previsualización de datos.
+
+3.  **Sprint 3: Integración del Motor de R y Ejecución (Tareas secuenciales)**
+    * Desarrollar la comunicación entre el _backend_ y el motor de R.
+    * Implementar la lógica de instalación automática de librerías.
+    * Crear el _endpoint_ de ejecución de análisis y el sistema de colas.
+
+4.  **Sprint 4: Visualización de Resultados y Pruebas**
+    * Implementar la visualización de la salida de texto (nativa y `STARGAZER`).
+    * Implementar la visualización de gráficos interactivos con Plotly.
+    * Realizar pruebas de integración, rendimiento y seguridad.
+
+Este documento ha sido diseñado para ser una herramienta viva. Su equipo de desarrollo debe usarlo como base y actualizarlo con cualquier descubrimiento o cambio en el proceso.

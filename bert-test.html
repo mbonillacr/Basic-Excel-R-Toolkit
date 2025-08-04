@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BERT v3.0 - Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1e3c72;
+            color: white;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+        }
+        textarea, input {
+            width: 100%;
+            padding: 10px;
+            background: #060a0f;
+            color: white;
+            border: 1px solid #333;
+            border-radius: 5px;
+            margin: 10px 0;
+            box-sizing: border-box;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .output {
+            background: rgba(0,0,0,0.5);
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+            min-height: 100px;
+        }
+        .error { color: #ff6b6b; }
+        .success { color: #51cf66; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔬 BERT v3.0 - Test Simple</h1>
+        
+        <h3>Código R:</h3>
+        <textarea id="rCode" rows="8">mi_suma <- function(a, b) {
+    return(a + b)
+}
+
+mi_multiplicacion <- function(x, y) {
+    return(x * y)
+}</textarea>
+        
+        <button onclick="testLoad()">Cargar Funciones</button>
+        <button onclick="testExecute()">Ejecutar mi_suma(5, 3)</button>
+        <button onclick="testDirect()">Ejecutar Código Directo</button>
+        
+        <h3>Resultado:</h3>
+        <div id="output" class="output">Listo para probar...</div>
+    </div>
+
+    <script>
+        function testLoad() {
+            showOutput('Probando carga de funciones...', '');
+            
+            const code = document.getElementById('rCode').value;
+            
+            fetch('/api/load-functions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code })
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    showOutput(`✅ Funciones cargadas: ${result.functions.join(', ')}`, 'success');
+                } else {
+                    showOutput(`❌ Error: ${result.error}`, 'error');
+                }
+            })
+            .catch(error => {
+                showOutput(`❌ Error de conexión: ${error.message}`, 'error');
+            });
+        }
+        
+        function testExecute() {
+            showOutput('Ejecutando mi_suma(5, 3)...', '');
+            
+            fetch('/api/execute-function', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ functionName: 'mi_suma', params: '5, 3' })
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    showOutput(`✅ Resultado: ${result.output}`, 'success');
+                } else {
+                    showOutput(`❌ Error: ${result.error}`, 'error');
+                }
+            })
+            .catch(error => {
+                showOutput(`❌ Error de conexión: ${error.message}`, 'error');
+            });
+        }
+        
+        function testDirect() {
+            showOutput('Ejecutando código directo...', '');
+            
+            const code = '2 + 2';
+            
+            fetch('/api/execute-r', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code })
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    showOutput(`✅ Resultado: ${result.output}`, 'success');
+                } else {
+                    showOutput(`❌ Error: ${result.error}`, 'error');
+                }
+            })
+            .catch(error => {
+                showOutput(`❌ Error de conexión: ${error.message}`, 'error');
+            });
+        }
+        
+        function showOutput(message, type) {
+            const output = document.getElementById('output');
+            output.textContent = message;
+            output.className = `output ${type}`;
+        }
+    </script>
+</body>
+</html>
